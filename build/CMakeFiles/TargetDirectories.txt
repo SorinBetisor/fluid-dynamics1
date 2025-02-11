@@ -1,0 +1,3 @@
+C:/Users/Admin/Documents/GitHub/fluid-dynamics1/build/CMakeFiles/fluid_solver.dir
+C:/Users/Admin/Documents/GitHub/fluid-dynamics1/build/CMakeFiles/ALL_BUILD.dir
+C:/Users/Admin/Documents/GitHub/fluid-dynamics1/build/CMakeFiles/ZERO_CHECK.dir

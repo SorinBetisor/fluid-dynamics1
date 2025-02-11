@@ -1,0 +1,10 @@
+^C:\USERS\ADMIN\DOCUMENTS\GITHUB\FLUID-DYNAMICS1\BUILD\CMAKEFILES\834163604B8883955C574265BBD00A9C\GENERATE.STAMP.RULE
+setlocal
+D:\CMake\bin\cmake.exe -SC:/Users/Admin/Documents/GitHub/fluid-dynamics1 -BC:/Users/Admin/Documents/GitHub/fluid-dynamics1/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/Admin/Documents/GitHub/fluid-dynamics1/build/FluidDynamicsSolver.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd
