@@ -61,6 +61,26 @@ This project implements a hybrid fluid dynamics simulation system combining trad
    pip3 install torch torchvision tensorflow numpy h5py mpi4py
    ```
 
+### Linux setup (Arch in particular)
+
+1. **Install build utilities**
+   ```bash
+   sudo pacman -S base-devel cmake 
+   ```
+2. **Install necessery python packages to the Virtual env**
+   ```bash
+   python -m venv pyenv
+   source myenv/bin/activate
+
+   pip install --upgrade pip
+   pip install torch torchvision tensorflow numpy h5py mpi4py
+   ```
+
+3. **Install openFOAM**
+   ```bash
+   yay -S openfoam-com
+   ```
+
 ## Project Structure
 
 ```
@@ -92,6 +112,11 @@ mkdir build
 cd build
 cmake ..
 make
+```
+
+### linux
+```bash
+./build.sh
 ```
 
 ## Running Tests
