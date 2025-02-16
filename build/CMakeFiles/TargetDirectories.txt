@@ -1,3 +1,0 @@
-/home/kakto/tmp/CFD/fluid-dynamics1/build/CMakeFiles/fluid_solver.dir
-/home/kakto/tmp/CFD/fluid-dynamics1/build/CMakeFiles/edit_cache.dir
-/home/kakto/tmp/CFD/fluid-dynamics1/build/CMakeFiles/rebuild_cache.dir
