@@ -1,0 +1,8 @@
+gridSize 512
+diffusion 0.00001
+viscosity 0.000018
+pressureIterations 20
+dt 0.1
+numIterations 100
+fluidDen 1.0f
+fluidVel 1.0f

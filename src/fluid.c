@@ -31,8 +31,6 @@
 
 #include "fluid.h"
 
-// A helper macro for 2D indexing in a flat array.
-#define IX(i, j, N) ((i) + (j) * (N))
 
 // Internal helper function prototypes.
 // Each helper function represents one of the core physical steps (diffusion, advection,
@@ -144,8 +142,8 @@ static void set_bnd(int b, float *x, Fluid *fluid) {
     int N = fluid->gridSize;
     for (int i = 1; i < N - 1; i++) {
         // For left and right boundaries.
-        x[IX(0, i, N)]       = (b == 1) ? -x[IX(1, i, N)] : x[IX(1, i, N)];
-        x[IX(N - 1, i, N)]   = (b == 1) ? -x[IX(N - 2, i, N)] : x[IX(N - 2, i, N)];
+    //     x[IX(0, i, N)]       = (b == 1) ? -x[IX(1, i, N)] : x[IX(1, i, N)];
+    //     x[IX(N - 1, i, N)]   = (b == 1) ? -x[IX(N - 2, i, N)] : x[IX(N - 2, i, N)];
         // For top and bottom boundaries.
         x[IX(i, 0, N)]       = (b == 2) ? -x[IX(i, 1, N)] : x[IX(i, 1, N)];
         x[IX(i, N - 1, N)]   = (b == 2) ? -x[IX(i, N - 2, N)] : x[IX(i, N - 2, N)];
@@ -186,6 +184,7 @@ static void diffuse(int b, float *x, float *x0, float diff, float dt, Fluid *flu
 static void advect(int b, float *d, float *d0, float *u, float *v, float dt, Fluid *fluid) {
     int N = fluid->gridSize;
     float dt0 = dt * (N - 2);
+    #pragma omp parallel for collapse(2)
     for (int i = 1; i < N - 1; i++) {
         for (int j = 1; j < N - 1; j++) {
             // Compute the previous position of the fluid element at (i,j).
