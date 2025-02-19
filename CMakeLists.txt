@@ -1,41 +1,60 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.10)
+
+# Project name, version, and language
 project(FluidDynamicsSolver VERSION 1.0
         DESCRIPTION "Fluid Dynamics PDE Solver with ML Integration"
-        LANGUAGES CXX)
+        LANGUAGES C)
 
-# Set C++ standard
-set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
+# Set the C standard 
+set(CMAKE_C_STANDARD 23)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
 
-# Enable OpenMP if available
-find_package(OpenMP)
-if(OpenMP_CXX_FOUND)
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+# Include directories for header files
+include_directories(${CMAKE_SOURCE_DIR}/include)
+
+# Gather all C source files from the src/ directory
+file(GLOB_RECURSE SRC_FILES ${CMAKE_SOURCE_DIR}/src/*.c)
+
+# Ensure that there are source files
+if (NOT SRC_FILES)
+    message(FATAL_ERROR "No source files found in src/ directory!")
 endif()
 
-# Add HDF5 support for data storage
-find_package(HDF5 REQUIRED COMPONENTS CXX)
+# Define the executable target
+add_executable(fluid_solver ${SRC_FILES})
 
-# Add source files
-add_executable(fluid_solver 
-    src/main.cpp
-)
+# Enable OpenMP if available and link dynamically
+find_package(OpenMP)
+if (OpenMP_FOUND)
+    target_link_libraries(fluid_solver PRIVATE OpenMP::OpenMP_C)
+endif()
 
-# Include directories
-target_include_directories(fluid_solver PRIVATE 
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${HDF5_INCLUDE_DIRS}
-)
-
-# Link libraries
-target_link_libraries(fluid_solver PRIVATE
-    ${HDF5_LIBRARIES}
-)
-
-# Add compiler warnings
-if(MSVC)
-    target_compile_options(fluid_solver PRIVATE /W4)
+# Add HDF5 support for data storage 
+find_package(HDF5 REQUIRED COMPONENTS C)
+if (HDF5_FOUND)
+    include_directories(${HDF5_INCLUDE_DIRS})
+    target_link_libraries(fluid_solver PRIVATE ${HDF5_LIBRARIES})
 else()
+    message(FATAL_ERROR "HDF5 not found!")
+endif()
+
+# Optionally link the math library on UNIX systems
+if (UNIX)
+    target_link_libraries(fluid_solver PRIVATE m)
+endif()
+
+# Add compiler warnings based on the compiler used
+if (CMAKE_C_COMPILER_ID STREQUAL "GNU" OR CMAKE_C_COMPILER_ID MATCHES "Clang")
     target_compile_options(fluid_solver PRIVATE -Wall -Wextra -Wpedantic)
-endif() 
+elseif (CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+    target_compile_options(fluid_solver PRIVATE /W4)
+endif()
+
+# Set output directories for runtime, archive, and library files
+set_target_properties(fluid_solver PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
+    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+)
+

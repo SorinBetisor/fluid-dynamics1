@@ -76,9 +76,9 @@ This project implements a hybrid fluid dynamics simulation system combining trad
    pip install torch torchvision tensorflow numpy h5py mpi4py
    ```
 
-3. **Install openFOAM**
+3. **Install CGLM**
    ```bash
-   yay -S openfoam-com
+   yay -S cglm
    ```
 
 ## Project Structure
