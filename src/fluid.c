@@ -117,8 +117,8 @@ void fluid_step(Fluid *fluid) {
     advect(1, fluid->u, fluid->u0, fluid->u0, fluid->v0, dt, fluid);
     advect(2, fluid->v, fluid->v0, fluid->u0, fluid->v0, dt, fluid);
     
-    // Re-project the velocity field after advection.
-    project(fluid->u, fluid->v, fluid->u0, fluid->v0, fluid);
+    // // Re-project the velocity field after advection.
+    // project(fluid->u, fluid->v, fluid->u0, fluid->v0, fluid);
 
     // Step 4: Diffuse and advect the density field.
     // This moves the scalar quantity with the fluid flow.

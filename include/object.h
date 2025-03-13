@@ -27,4 +27,6 @@ void object_free(Object *obj);
 // so that the obstacle remains “solid.”
 void object_apply(Fluid *fluid, Object *obj);
 
+void object_apply_ib(Fluid *fluid, Object *obj);
+
 #endif // OBJECT_H

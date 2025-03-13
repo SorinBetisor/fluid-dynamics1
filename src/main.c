@@ -11,7 +11,7 @@ int main(void)
     // Initialize the fluid simulation.
     char buffer[250];
     FILE *conf = fopen("./windTunelConf", "r");
-    
+
     // Default configuration parameters.
     int gridSize = 256;
     float diffusion = 0.0001f;
@@ -21,18 +21,28 @@ int main(void)
     int numIterations = 1000;
     float fluidDen = 100.0f;
     float fluidVel = 5.0f;
-    
+
     // If the configuration file exists, try to read parameters.
-    if (conf) {
-        while (fgets(buffer, sizeof(buffer), conf)) {
-            if (sscanf(buffer, "gridSize %d", &gridSize) == 1) continue;
-            if (sscanf(buffer, "diffusion %f", &diffusion) == 1) continue;
-            if (sscanf(buffer, "viscosity %f", &viscosity) == 1) continue;
-            if (sscanf(buffer, "pressureIterations %d", &pressureIterations) == 1) continue;
-            if (sscanf(buffer, "dt %f", &dt) == 1) continue;
-            if (sscanf(buffer, "numIterations %d", &numIterations) == 1) continue;
-            if (sscanf(buffer, "fluidVel %f", &fluidDen) == 1) continue;
-            if (sscanf(buffer, "fluidDen %f", &fluidVel) == 1) continue;
+    if (conf)
+    {
+        while (fgets(buffer, sizeof(buffer), conf))
+        {
+            if (sscanf(buffer, "gridSize %d", &gridSize) == 1)
+                continue;
+            if (sscanf(buffer, "diffusion %f", &diffusion) == 1)
+                continue;
+            if (sscanf(buffer, "viscosity %f", &viscosity) == 1)
+                continue;
+            if (sscanf(buffer, "pressureIterations %d", &pressureIterations) == 1)
+                continue;
+            if (sscanf(buffer, "dt %f", &dt) == 1)
+                continue;
+            if (sscanf(buffer, "numIterations %d", &numIterations) == 1)
+                continue;
+            if (sscanf(buffer, "fluidVel %f", &fluidDen) == 1)
+                continue;
+            if (sscanf(buffer, "fluidDen %f", &fluidVel) == 1)
+                continue;
         }
         fclose(conf);
     }
@@ -47,13 +57,12 @@ int main(void)
     printf("  numIterations: %d\n", numIterations);
     printf("  fluid density: %f\n", fluidDen);
     printf("  fluid velocity: %f\n", fluidVel);
-    
-    
+
     Fluid fluid;
     fluid_init(&fluid, gridSize, diffusion, viscosity, pressureIterations, dt);
 
     Object *airfoil = object_load("airfoil.dat", fluid.gridSize);
-    
+
     char filename[256];
 
     for (int iter = 0; iter < numIterations; iter++)
@@ -73,7 +82,8 @@ int main(void)
         // Step the fluid simulation.
         fluid_step(&fluid);
 
-        object_apply(&fluid, airfoil);
+        // object_apply(&fluid, airfoil);
+        object_apply_ib(&fluid, airfoil);
 
         // Create a filename that includes the iteration number.
         sprintf(filename, "frame_%03d.ppm", iter);
