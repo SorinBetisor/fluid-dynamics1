@@ -280,7 +280,7 @@ Object *object_load(const char *filename, int gridSize)
      for (int i = 0; i < obj->count; i++)
      {
           obj->x[i] = offset_x + scale_x * obj->x[i];
-          // Flip y if needed to match your simulation’s coordinate system.
+          // Flip y if needed to match your simulation's coordinate system.
           obj->y[i] = offset_y - scale_y * obj->y[i];
      }
 
@@ -330,10 +330,12 @@ void object_free(Object *obj)
 void object_apply(Fluid *fluid, Object *obj)
 {
      int N = fluid->gridSize;
-#pragma omp parallel for collapse(2)
-     for (int j = 0; j < N; j++)
+     int i, j;
+     
+#pragma omp parallel for private(i, j)
+     for (j = 0; j < N; j++)
      {
-          for (int i = 0; i < N; i++)
+          for (i = 0; i < N; i++)
           {
                if (obj->mask[i + j * N])
                {

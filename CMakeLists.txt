@@ -6,7 +6,7 @@ project(FluidDynamicsSolver VERSION 1.0
         LANGUAGES C)
 
 # Set the C standard 
-set(CMAKE_C_STANDARD 23)
+set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_C_EXTENSIONS OFF)
 
@@ -39,6 +39,29 @@ else()
     message(FATAL_ERROR "HDF5 not found!")
 endif()
 
+# Find and link CGLM library
+find_package(cglm CONFIG REQUIRED)
+target_link_libraries(fluid_solver PRIVATE cglm::cglm)
+
+# Find OpenGL
+find_package(OpenGL REQUIRED)
+include_directories(${OPENGL_INCLUDE_DIR})
+
+# Find GLFW3
+find_package(glfw3 CONFIG REQUIRED)
+
+# Find GLAD
+find_package(glad CONFIG REQUIRED)
+
+# Update target link libraries
+target_link_libraries(fluid_solver PRIVATE 
+    ${HDF5_LIBRARIES}
+    cglm::cglm
+    OpenGL::GL
+    glfw
+    glad::glad
+)
+
 # Optionally link the math library on UNIX systems
 if (UNIX)
     target_link_libraries(fluid_solver PRIVATE m)
@@ -49,6 +72,8 @@ if (CMAKE_C_COMPILER_ID STREQUAL "GNU" OR CMAKE_C_COMPILER_ID MATCHES "Clang")
     target_compile_options(fluid_solver PRIVATE -Wall -Wextra -Wpedantic)
 elseif (CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     target_compile_options(fluid_solver PRIVATE /W4)
+    # Disable warnings about unsafe functions
+    target_compile_definitions(fluid_solver PRIVATE _CRT_SECURE_NO_WARNINGS)
 endif()
 
 # Set output directories for runtime, archive, and library files

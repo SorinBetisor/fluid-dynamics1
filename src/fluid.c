@@ -1,6 +1,6 @@
 /*
  * This file implements a 2D fluid simulation based on the Navier–Stokes equations.
- * The simulation uses the “Stable Fluids” method (Jos Stam, 1999), which is widely
+ * The simulation uses the "Stable Fluids" method (Jos Stam, 1999), which is widely
  * used for real-time fluid simulation in graphics.
  *
  * The simulation models three key physical processes:
@@ -9,7 +9,7 @@
  *      computed implicitly via an iterative (Gauss–Seidel) solver.
  *
  *   2. Advection: This is the transport of quantities by the fluid's own velocity.
- *      It uses a semi-Lagrangian method, where each grid cell “traces” backward
+ *      It uses a semi-Lagrangian method, where each grid cell "traces" backward
  *      along the velocity field to sample the advected quantity.
  *
  *   3. Projection: This step enforces the incompressibility of the fluid by
@@ -21,12 +21,12 @@
  *
  *   For water:
  *     - Diffusion: 0.0001 or lower (water has very low diffusivity)
- *     - Viscosity: 0.001 (water’s kinematic viscosity is roughly 1e-6 m^2/s in reality,
+ *     - Viscosity: 0.001 (water's kinematic viscosity is roughly 1e-6 m^2/s in reality,
  *                  but simulation units are often scaled for visual effect)
  *
  *   For air:
  *     - Diffusion: 0.00001 or lower (air has even lower diffusivity for many scalar fields)
- *     - Viscosity: 0.000018 (air’s kinematic viscosity is around 1.5e-5 m^2/s in real terms)
+ *     - Viscosity: 0.000018 (air's kinematic viscosity is around 1.5e-5 m^2/s in real terms)
  */
 
 #include "fluid.h"
@@ -184,9 +184,11 @@ static void diffuse(int b, float *x, float *x0, float diff, float dt, Fluid *flu
 static void advect(int b, float *d, float *d0, float *u, float *v, float dt, Fluid *fluid) {
     int N = fluid->gridSize;
     float dt0 = dt * (N - 2);
-    #pragma omp parallel for collapse(2)
-    for (int i = 1; i < N - 1; i++) {
-        for (int j = 1; j < N - 1; j++) {
+    int i, j;
+    
+    #pragma omp parallel for private(i, j)
+    for (i = 1; i < N - 1; i++) {
+        for (j = 1; j < N - 1; j++) {
             // Compute the previous position of the fluid element at (i,j).
             float x = i - dt0 * u[IX(i, j, N)];
             float y = j - dt0 * v[IX(i, j, N)];
