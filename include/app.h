@@ -1,16 +1,17 @@
 #ifndef APP_H
 #define APP_H
 
+#include "fluidSim.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_vulkan.h>
 #include <assert.h>
+#include <cglm/cglm.h>
 #include <math.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
 #include <string.h>
 #include <vulkan/vulkan.h>
-#include <cglm/cglm.h>
 
 /* ----------------------------------------------------
  * Constants
@@ -35,91 +36,99 @@ static const bool enableValidationLayers = false;
 static const bool enableValidationLayers = true;
 #endif
 
+#define VK_CHECK(call)                                                         \
+  do {                                                                         \
+    VkResult result = call;                                                    \
+    if (result != VK_SUCCESS) {                                                \
+      fprintf(stderr, "Vulkan error: %d at %s:%d\n", result, __FILE__,         \
+              __LINE__);                                                       \
+      exit(1);                                                                 \
+    }                                                                          \
+  } while (0)
+
 /* ----------------------------------------------------
  * Structs
  * ----------------------------------------------------*/
 
-typedef struct SwapChainSupportDetails
-{
-    VkSurfaceCapabilitiesKHR capabilities;
-    uint32_t formatCount;
-    VkSurfaceFormatKHR *formats;
-    uint32_t presentModeCount;
-    VkPresentModeKHR *presentModes;
+typedef struct SwapChainSupportDetails {
+  VkSurfaceCapabilitiesKHR capabilities;
+  uint32_t formatCount;
+  VkSurfaceFormatKHR *formats;
+  uint32_t presentModeCount;
+  VkPresentModeKHR *presentModes;
 } SwapChainSupportDetails;
 
-typedef struct QueueFamilyIndices
-{
-    uint32_t graphicsFamily;
-    bool isGraphicsFamilySet;
+typedef struct QueueFamilyIndices {
+  uint32_t graphicsFamily;
+  bool isGraphicsFamilySet;
 
-    uint32_t presentationFamily;
-    bool isPresentFamilySet;
+  uint32_t presentationFamily;
+  bool isPresentFamilySet;
 
-    uint32_t transferFamily;
-    bool isTransferFamilySet;
+  uint32_t transferFamily;
+  bool isTransferFamilySet;
 } QueueFamilyIndices;
 
-typedef struct Shaderfile
-{
-    size_t size;
-    char *code;
+typedef struct Shaderfile {
+  size_t size;
+  char *code;
 } Shaderfile;
 
-typedef struct Vertex
-{
-    vec2 pos;
-    vec3 color;
+typedef struct Vertex {
+  vec2 pos;
+  vec3 color;
 } Vertex;
 
-typedef struct App
-{
-    SDL_Window *window;
-    VkInstance instance;
-    VkDebugUtilsMessengerEXT debugMessanger;
-    VkSurfaceKHR surface;
-    VkPhysicalDevice physicalDevice;
-    QueueFamilyIndices QueueFamilyIndices;
-    VkDevice device;
-    VkQueue graphicsQueue;
-    VkQueue presentationQueue;
-    VkQueue transferQueue;
-    VkSwapchainKHR swapChain;
-    uint32_t swapChainImageCount;
-    VkImage *swapChainImages;
-    VkFormat swapChainImageFormat;
-    VkExtent2D swapChainExtent;
-    VkImageView *swapchainImageView;
-    VkRenderPass renderPass;
-    VkPipelineLayout pipelineLayout;
-    VkPipeline graphicsPipeline;
-    VkFramebuffer *swapchainFramebuffers;
-    VkCommandPool commandPool;
-    VkCommandPool transferCommandPool;
-    // VkCommandBuffer commandBuffer;
-    VkCommandBuffer *commandBuffers;
-    // VkSemaphore imageAvailableSemaphore;
-    // VkSemaphore renderFinishedSemaphore;
-    // VkFence inFlightFence;
+typedef struct App {
+  SDL_Window *window;
+  VkInstance instance;
+  VkDebugUtilsMessengerEXT debugMessanger;
+  VkSurfaceKHR surface;
+  VkPhysicalDevice physicalDevice;
+  QueueFamilyIndices QueueFamilyIndices;
+  VkDevice device;
+  VkQueue graphicsQueue;
+  VkQueue presentationQueue;
+  VkQueue transferQueue;
+  VkSwapchainKHR swapChain;
+  uint32_t swapChainImageCount;
+  VkImage *swapChainImages;
+  VkFormat swapChainImageFormat;
+  VkExtent2D swapChainExtent;
+  VkImageView *swapchainImageView;
+  VkRenderPass renderPass;
+  VkPipelineLayout pipelineLayout;
+  VkPipeline graphicsPipeline;
+  VkFramebuffer *swapchainFramebuffers;
+  VkCommandPool commandPool;
+  VkCommandPool transferCommandPool;
+  // VkCommandBuffer commandBuffer;
+  VkCommandBuffer *commandBuffers;
+  // VkSemaphore imageAvailableSemaphore;
+  // VkSemaphore renderFinishedSemaphore;
+  // VkFence inFlightFence;
 
-    VkSemaphore *imageAvailableSemaphores;
-    VkSemaphore *renderFinishedSemaphores;
-    VkFence *inFlightFences;
+  VkSemaphore *imageAvailableSemaphores;
+  VkSemaphore *renderFinishedSemaphores;
+  VkFence *inFlightFences;
 
-    bool framebufferResized;
+  bool framebufferResized;
 
-    uint32_t currentFrame;
+  uint32_t currentFrame;
 
-    Vertex *vertices;
-    uint32_t verticesCount;
+  Vertex *vertices;
+  uint32_t verticesCount;
 
-    VkBuffer vertexBuffer;
-    VkDeviceMemory vertexBufferMemory;
+  VkBuffer vertexBuffer;
+  VkDeviceMemory vertexBufferMemory;
 
-    VkBuffer indexBuffer;
-    VkDeviceMemory indexBufferMemory;
-    uint16_t *indices;
-    uint32_t indicesCount;   
+  VkBuffer indexBuffer;
+  VkDeviceMemory indexBufferMemory;
+  uint16_t *indices;
+  uint32_t indicesCount;
+
+  VkDescriptorPool descriptorPool;
+  FluidSim fluidSim;
 } App;
 
 /* ----------------------------------------------------
@@ -154,19 +163,16 @@ void createImageView(App *pApp);
 
 // From debug.c
 VkResult CreateDebugUtilsMessengerEXT(
-    VkInstance instance,
-    const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo,
+    VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo,
     const VkAllocationCallbacks *pAllocator,
     VkDebugUtilsMessengerEXT *pDebugMessenger);
-void DestroyDebugUtilsMessengerEXT(
-    VkInstance instance,
-    VkDebugUtilsMessengerEXT debugMessenger,
-    const VkAllocationCallbacks *pAllocator);
+void DestroyDebugUtilsMessengerEXT(VkInstance instance,
+                                   VkDebugUtilsMessengerEXT debugMessenger,
+                                   const VkAllocationCallbacks *pAllocator);
 VKAPI_ATTR VkBool32 VKAPI_CALL debugCallback(
     VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
     VkDebugUtilsMessageTypeFlagsEXT messageType,
-    const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData,
-    void *pUserData);
+    const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData);
 
 // From shader.c
 Shaderfile readShaderFile(const char *filename);
@@ -174,12 +180,16 @@ Shaderfile readShaderFile(const char *filename);
 // Additional helpers
 bool checkValidationLayerSupport(void);
 bool checkDeviceExtensionSupport(VkPhysicalDevice device);
-SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface);
+SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device,
+                                              VkSurfaceKHR surface);
 void freeSwapChainSupportDetails(SwapChainSupportDetails *details);
-VkSurfaceFormatKHR chooseSwapSurfaceFormat(VkSurfaceFormatKHR *availableFormats, uint32_t formatCount);
-VkPresentModeKHR chooseSwapPresentMode(VkPresentModeKHR *availablePresentModes, uint32_t presentModeCount);
+VkSurfaceFormatKHR chooseSwapSurfaceFormat(VkSurfaceFormatKHR *availableFormats,
+                                           uint32_t formatCount);
+VkPresentModeKHR chooseSwapPresentMode(VkPresentModeKHR *availablePresentModes,
+                                       uint32_t presentModeCount);
 VkExtent2D chooseSwapExtent(VkSurfaceCapabilitiesKHR *capabilities, App *pApp);
 uint32_t rateDeviceSuitability(VkPhysicalDevice device, VkSurfaceKHR surface);
-QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface);
+QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device,
+                                     VkSurfaceKHR surface);
 
 #endif // APP_H

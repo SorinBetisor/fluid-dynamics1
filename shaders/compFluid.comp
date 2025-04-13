@@ -1,0 +1,37 @@
+#version 450
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) buffer VelocityField {
+    vec4 velocities[];
+} velocityField;
+
+layout(set = 0, binding = 1) uniform SimulationParams {
+    float dt;
+    float viscosity;
+} simParams;
+
+void main() {
+    ivec2 coords = ivec2(gl_GlobalInvocationID.xy);
+    uint index = coords.y * gl_NumWorkGroups.x * gl_WorkGroupSize.x + coords.x;
+    
+    // Read current velocity
+    vec4 velocity = velocityField.velocities[index];
+    
+    // Apply viscous diffusion
+    // Simple damping based on viscosity
+    vec2 newVelocity = velocity.xy * (1.0 - simParams.viscosity * simParams.dt);
+    
+    // Basic advection
+    // Move the velocity based on itself and timestep
+    vec2 position = vec2(coords) - newVelocity * simParams.dt;
+    
+    // Simple boundary conditions
+    // Keep velocities within bounds
+    newVelocity = mix(newVelocity, vec2(0.0), 
+        vec2(position.x < 0.0 || position.x >= gl_NumWorkGroups.x * gl_WorkGroupSize.x,
+             position.y < 0.0 || position.y >= gl_NumWorkGroups.y * gl_WorkGroupSize.y));
+    
+    // Store result
+    velocityField.velocities[index] = vec4(newVelocity, velocity.zw);
+}
