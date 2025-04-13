@@ -4,8 +4,22 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <math.h>
-#include <cglm/cglm.h>
-#include <omp.h>
+
+// Check if CGLM is available, otherwise use custom vec2 definition
+#ifdef HAVE_CGLM
+  #include <cglm/cglm.h>
+#else
+  // Simple Vec2 implementation as fallback
+  typedef struct {
+      float x;
+      float y;
+  } vec2;
+#endif
+
+// Optional OpenMP support
+#ifdef _OPENMP
+  #include <omp.h>
+#endif
 
 #ifdef __cplusplus
 extern "C"

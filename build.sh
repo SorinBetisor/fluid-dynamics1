@@ -21,17 +21,23 @@ fi
 
 # Create a fresh build directory
 echo "Creating a new build directory..."
-mkdir "$BUILD_DIR"
+mkdir -p "$BUILD_DIR"
 
 # Navigate to the build directory
 cd "$BUILD_DIR"
 
-# Run CMake to configure the project
+# Run CMake to configure the project with verbose output
 echo "Configuring the project with CMake..."
-cmake ..
+cmake -DCMAKE_VERBOSE_MAKEFILE=ON ..
 
 # Build the project
 echo "Building the project..."
-cmake --build .
+cmake --build . -- VERBOSE=1
 
-echo "Build successful!"
+if [ $? -eq 0 ]; then
+    echo "Build successful!"
+    echo "The executable is located at: $BUILD_DIR/bin/fluid_solver"
+else
+    echo "Build failed!"
+    exit 1
+fi

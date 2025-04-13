@@ -6,11 +6,23 @@
 #include <math.h>
 #include "object.h"
 #include <GLFW/glfw3.h>
+#include <string.h>
 
 // Callback for keyboard input
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS)
         glfwSetWindowShouldClose(window, GLFW_TRUE);
+}
+
+// Helper function to create a string duplicate (for C99 compatibility)
+static char* safe_strdup(const char* str) {
+    if (!str) return NULL;
+    size_t len = strlen(str) + 1;
+    char* new_str = (char*)malloc(len);
+    if (new_str) {
+        memcpy(new_str, str, len);
+    }
+    return new_str;
 }
 
 int main(void)
@@ -77,7 +89,7 @@ int main(void)
         // Create a default airfoil if loading failed
         airfoil = (Object*)malloc(sizeof(Object));
         if (airfoil) {
-            airfoil->name = strdup("Default Airfoil");
+            airfoil->name = safe_strdup("Default Airfoil");
             airfoil->count = 0;
             airfoil->x = NULL;
             airfoil->y = NULL;

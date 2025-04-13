@@ -43,12 +43,16 @@ int fluid_renderer_init(int width, int height) {
         return 0;
     }
     
-    // Configure GLFW
+    printf("GLFW Initialized successfully\n");
+    
+    // Configure GLFW with more compatibility options for Mac
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+    glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE); // Required for Mac
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     
     // Create a window
+    printf("Creating GLFW window of size %dx%d\n", windowWidth, windowHeight);
     window = glfwCreateWindow(windowWidth, windowHeight, "Fluid Simulation", NULL, NULL);
     if (!window) {
         fprintf(stderr, "Failed to create GLFW window\n");
@@ -58,25 +62,40 @@ int fluid_renderer_init(int width, int height) {
     
     glfwMakeContextCurrent(window);
     
+    // Set swap interval to synchronize with vertical refresh
+    glfwSwapInterval(1);
+    
     // Initialize GLAD
     if (!initialize_glad()) {
+        fprintf(stderr, "Failed to initialize OpenGL loader\n");
         glfwDestroyWindow(window);
         glfwTerminate();
         return 0;
     }
     
+    printf("OpenGL Version: %s\n", glGetString(GL_VERSION));
+    printf("OpenGL Vendor: %s\n", glGetString(GL_VENDOR));
+    printf("OpenGL Renderer: %s\n", glGetString(GL_RENDERER));
+    
     // Compile vertex shader
+    printf("Compiling vertex shader...\n");
     unsigned int vertexShader = compileShader(GL_VERTEX_SHADER, vertexShaderSource);
-    if (!vertexShader) return 0;
+    if (!vertexShader) {
+        fprintf(stderr, "Failed to compile vertex shader\n");
+        return 0;
+    }
     
     // Compile fragment shader
+    printf("Compiling fragment shader...\n");
     unsigned int fragmentShader = compileShader(GL_FRAGMENT_SHADER, fragmentShaderSource);
     if (!fragmentShader) {
+        fprintf(stderr, "Failed to compile fragment shader\n");
         glDeleteShader(vertexShader);
         return 0;
     }
     
     // Link shaders
+    printf("Linking shader program...\n");
     shaderProgram = glCreateProgram();
     glAttachShader(shaderProgram, vertexShader);
     glAttachShader(shaderProgram, fragmentShader);
@@ -97,6 +116,8 @@ int fluid_renderer_init(int width, int height) {
     // Delete shaders as they're linked into our program now
     glDeleteShader(vertexShader);
     glDeleteShader(fragmentShader);
+    
+    printf("Setting up vertex data and attributes...\n");
     
     // Set up vertex data (a square to display our texture)
     float vertices[] = {
@@ -131,6 +152,7 @@ int fluid_renderer_init(int width, int height) {
     glEnableVertexAttribArray(1);
     
     // Create a texture
+    printf("Setting up texture...\n");
     glGenTextures(1, &texture);
     glBindTexture(GL_TEXTURE_2D, texture);
     
@@ -140,6 +162,13 @@ int fluid_renderer_init(int width, int height) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
     
+    // Check for OpenGL errors
+    GLenum err;
+    while ((err = glGetError()) != GL_NO_ERROR) {
+        printf("OpenGL error during initialization: 0x%04x\n", err);
+    }
+    
+    printf("Renderer initialization complete\n");
     return 1;
 }
 
@@ -167,9 +196,25 @@ void fluid_renderer_draw_frame(Fluid *fluid) {
     // Process events
     glfwPollEvents();
     
-    // Clear the screen
-    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+    // Clear the screen with a bright color to test rendering
+    glClearColor(0.2f, 0.3f, 0.8f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT);
+    
+    // Print debug information
+    static int frameCounter = 0;
+    if (frameCounter++ % 60 == 0) {
+        printf("Debug: Rendering frame %d, fluid size: %d, window: %p\n", 
+               frameCounter, fluid->size, (void*)window);
+        
+        // Print max density to check if we have data
+        float maxDensity = 0.0f;
+        for (int i = 0; i < fluid->size; i++) {
+            if (fluid->density[i] > maxDensity) {
+                maxDensity = fluid->density[i];
+            }
+        }
+        printf("Debug: Max density: %f\n", maxDensity);
+    }
     
     // Find maximum density for normalization
     float maxDensity = 0.0f;
@@ -187,43 +232,58 @@ void fluid_renderer_draw_frame(Fluid *fluid) {
         return;
     }
     
-    // Fill texture with density data
+    // Fill texture with density data - use higher contrast for visibility
     for (int j = 0; j < N; j++) {
         for (int i = 0; i < N; i++) {
             int idx = (i + j * N) * 3;
             float normDensity = fminf(fluid->density[i + j * N] / maxDensity, 1.0f);
+            
+            // Apply contrast enhancement
+            normDensity = powf(normDensity, 0.5f); // Gamma correction for better visibility
+            
             textureData[idx] = (unsigned char)(normDensity * 255);     // Red
             textureData[idx + 1] = (unsigned char)(normDensity * 255); // Green
             textureData[idx + 2] = (unsigned char)(normDensity * 255); // Blue
         }
     }
     
-    // Draw airfoil boundary in bright red
+    // Draw airfoil boundary in bright red with more contrast
     for (int j = 0; j < N; j++) {
         for (int i = 0; i < N; i++) {
             if (fluid->u[IX(i, j, N)] == 0 && fluid->v[IX(i, j, N)] == 0 && fluid->density[IX(i, j, N)] == 0) {
                 // This is likely the airfoil as we set velocity and density to 0 in object_apply
                 int idx = (i + j * N) * 3;
                 textureData[idx] = 255;     // Red (bright red for airfoil)
-                textureData[idx + 1] = 50;  // Green
-                textureData[idx + 2] = 50;  // Blue
+                textureData[idx + 1] = 0;   // Green
+                textureData[idx + 2] = 0;   // Blue
             }
         }
     }
     
-    // Update the texture with the RGB data
+    // Use the shader program
+    glUseProgram(shaderProgram);
+    
+    // Update and bind the texture
+    glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, N, N, 0, GL_RGB, GL_UNSIGNED_BYTE, textureData);
     
-    // Use the shader program
-    glUseProgram(shaderProgram);
+    // Set the texture sampler uniform to use texture unit 0
+    GLint densityMapLocation = glGetUniformLocation(shaderProgram, "densityMap");
+    glUniform1i(densityMapLocation, 0);
     
     // Render the quad
     glBindVertexArray(VAO);
     glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
     
-    // Swap buffers
+    // Swap buffers and check for errors
     glfwSwapBuffers(window);
+    
+    // Check for OpenGL errors
+    GLenum err;
+    while ((err = glGetError()) != GL_NO_ERROR) {
+        printf("OpenGL error: 0x%04x\n", err);
+    }
     
     free(textureData);
 }

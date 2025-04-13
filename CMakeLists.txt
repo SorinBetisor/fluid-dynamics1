@@ -24,43 +24,74 @@ endif()
 # Define the executable target
 add_executable(fluid_solver ${SRC_FILES})
 
-# Enable OpenMP if available and link dynamically
+# Enable OpenMP if available - make it optional
 find_package(OpenMP)
 if (OpenMP_FOUND)
     target_link_libraries(fluid_solver PRIVATE OpenMP::OpenMP_C)
+    target_compile_definitions(fluid_solver PRIVATE _OPENMP)
+    message(STATUS "OpenMP found and enabled")
+else()
+    message(STATUS "OpenMP not found, proceeding without parallel processing")
 endif()
 
-# Add HDF5 support for data storage 
-find_package(HDF5 REQUIRED COMPONENTS C)
+# Add HDF5 support for data storage - make it optional
+find_package(HDF5 COMPONENTS C)
 if (HDF5_FOUND)
     include_directories(${HDF5_INCLUDE_DIRS})
     target_link_libraries(fluid_solver PRIVATE ${HDF5_LIBRARIES})
+    target_compile_definitions(fluid_solver PRIVATE HAVE_HDF5)
+    message(STATUS "HDF5 found and enabled")
 else()
-    message(FATAL_ERROR "HDF5 not found!")
+    message(WARNING "HDF5 not found, some features may be disabled")
 endif()
 
-# Find and link CGLM library
-find_package(cglm CONFIG REQUIRED)
-target_link_libraries(fluid_solver PRIVATE cglm::cglm)
+# Find and link CGLM library - make it optional for now
+find_package(cglm CONFIG)
+if (cglm_FOUND)
+    target_link_libraries(fluid_solver PRIVATE cglm::cglm)
+    target_compile_definitions(fluid_solver PRIVATE HAVE_CGLM)
+    message(STATUS "CGLM found and enabled")
+else()
+    message(WARNING "CGLM not found, will use fallback math functions")
+endif()
 
 # Find OpenGL
 find_package(OpenGL REQUIRED)
 include_directories(${OPENGL_INCLUDE_DIR})
 
-# Find GLFW3
-find_package(glfw3 CONFIG REQUIRED)
+# Find GLFW3 - make it optional
+find_package(glfw3 CONFIG)
+if (glfw3_FOUND)
+    message(STATUS "GLFW3 found and enabled")
+else()
+    find_package(glfw3)
+    if (glfw3_FOUND)
+        message(STATUS "GLFW3 found through alternate means")
+    else()
+        message(WARNING "GLFW3 not found, visualization will be disabled")
+    endif()
+endif()
 
-# Find GLAD
-find_package(glad CONFIG REQUIRED)
-
-# Update target link libraries
+# Update target link libraries with what we have
 target_link_libraries(fluid_solver PRIVATE 
-    ${HDF5_LIBRARIES}
-    cglm::cglm
-    OpenGL::GL
-    glfw
-    glad::glad
+    ${OPENGL_LIBRARIES}
 )
+
+# Add GLFW if found
+if (glfw3_FOUND)
+    target_link_libraries(fluid_solver PRIVATE glfw)
+    target_compile_definitions(fluid_solver PRIVATE HAVE_GLFW)
+endif()
+
+# Add HDF5 if found
+if (HDF5_FOUND)
+    target_link_libraries(fluid_solver PRIVATE ${HDF5_LIBRARIES})
+endif()
+
+# Add CGLM if found
+if (cglm_FOUND)
+    target_link_libraries(fluid_solver PRIVATE cglm::cglm)
+endif()
 
 # Optionally link the math library on UNIX systems
 if (UNIX)

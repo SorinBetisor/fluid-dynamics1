@@ -9,7 +9,13 @@ const char* fragmentShaderSource =
     "uniform sampler2D densityMap;\n"
     "void main()\n"
     "{\n"
+    "   // Sample texture and add color adjustment for visibility\n"
     "   vec3 color = texture(densityMap, TexCoord).rgb;\n"
+    "   \n"
+    "   // Enhance contrast\n"
+    "   color = pow(color, vec3(0.8));\n"
+    "   \n"
+    "   // Output the final color\n"
     "   FragColor = vec4(color, 1.0);\n"
     "}\0";
 
