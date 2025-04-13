@@ -7,4 +7,10 @@
         <Nullable>enable</Nullable>
     </PropertyGroup>
 
+    <ItemGroup>
+      <PackageReference Include="Flecs.NET.Bindings.Release" Version="4.0.3" />
+      <PackageReference Include="Flecs.NET.Native.Release" Version="4.0.3" />
+      <PackageReference Include="Flecs.NET.Release" Version="4.0.3" />
+    </ItemGroup>
+
 </Project>
