@@ -1,0 +1,4 @@
+build/
+*.o
+vulkan_app
+*.spv

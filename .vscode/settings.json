@@ -1,0 +1,17 @@
+{
+    "files.associations": {
+        "sdl.h": "c",
+        "core": "c",
+        "algorithm": "c",
+        "cmath": "c",
+        "complex": "c",
+        "sdl_vulkan.h": "c",
+        "array": "c",
+        "any": "c",
+        "string_view": "c",
+        "span": "c",
+        "app.h": "c",
+        "shader.h": "c"
+    },
+    "C_Cpp.dimInactiveRegions": false
+}
