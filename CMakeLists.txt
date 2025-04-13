@@ -24,6 +24,8 @@ endif()
 # Add the executable
 add_executable(${EXECUTABLE_NAME} ${SRC_FILES})
 
+target_link_libraries(${EXECUTABLE_NAME} PRIVATE m)
+
 # Find SDL2 package
 find_package(SDL2 REQUIRED)
 if (SDL2_FOUND)

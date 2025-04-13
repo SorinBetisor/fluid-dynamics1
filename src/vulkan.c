@@ -150,41 +150,35 @@ static VkVertexInputBindingDescription getBindingDescription() {
   return bindingDescription;
 }
 
-void populateVertecies(App *pApp) // WARN: This is a stub, replace later with
-                                  // proper Vertex generation
-{
-  pApp->verticesCount = 4;
-  pApp->vertices = malloc(sizeof(Vertex) * pApp->verticesCount);
-  if (pApp->vertices == NULL) {
-    printf("Failed to allocate memory for vertices.\n");
-    abort();
-  }
+void populateVertecies(App *pApp) {
+    pApp->verticesCount = 4;
+    pApp->vertices = malloc(sizeof(Vertex) * pApp->verticesCount);
+    if (pApp->vertices == NULL) {
+        printf("Failed to allocate memory for vertices.\n");
+        abort();
+    }
 
-  glm_vec2_copy((vec2){-0.5f, -0.5f}, pApp->vertices[0].pos);
-  glm_vec3_copy((vec3){1.0f, 0.0f, 0.0f}, pApp->vertices[0].color);
+    // Create full-screen quad
+    glm_vec2_copy((vec2){-1.0f, -1.0f}, pApp->vertices[0].pos);
+    glm_vec2_copy((vec2){ 1.0f, -1.0f}, pApp->vertices[1].pos);
+    glm_vec2_copy((vec2){ 1.0f,  1.0f}, pApp->vertices[2].pos);
+    glm_vec2_copy((vec2){-1.0f,  1.0f}, pApp->vertices[3].pos);
 
-  glm_vec2_copy((vec2){0.5f, -0.5f}, pApp->vertices[1].pos);
-  glm_vec3_copy((vec3){0.0f, 1.0f, 0.0f}, pApp->vertices[1].color);
-
-  glm_vec2_copy((vec2){0.5f, 0.5f}, pApp->vertices[2].pos);
-  glm_vec3_copy((vec3){0.0f, 0.0f, 0.1f}, pApp->vertices[2].color);
-
-  glm_vec2_copy((vec2){-0.5f, 0.5f}, pApp->vertices[3].pos);
-  glm_vec3_copy((vec3){1.0f, 1.0f, 1.0f}, pApp->vertices[3].color);
-
-  // index data
-  pApp->indicesCount = 6;
-  pApp->indices = malloc(sizeof(uint16_t) * pApp->indicesCount);
-  if (pApp->indices == NULL) {
-    printf("Failed to allocate memory for indices\n");
-    abort();
-  }
-  pApp->indices[0] = 0;
-  pApp->indices[1] = 1;
-  pApp->indices[2] = 2;
-  pApp->indices[3] = 2;
-  pApp->indices[4] = 3;
-  pApp->indices[5] = 0;
+    // index data
+    pApp->indicesCount = 6;
+    pApp->indices = malloc(sizeof(uint16_t) * pApp->indicesCount);
+    if (pApp->indices == NULL) {
+        printf("Failed to allocate memory for indices\n");
+        abort();
+    }
+    
+    // Two triangles to form a quad
+    pApp->indices[0] = 0;
+    pApp->indices[1] = 1;
+    pApp->indices[2] = 2;
+    pApp->indices[3] = 2;
+    pApp->indices[4] = 3;
+    pApp->indices[5] = 0;
 }
 
 void createIndexBuffer(App *pApp) {
@@ -304,17 +298,18 @@ void recreateSwapChain(App *pApp) {
 void createDescriptorPool(App *pApp) {
   VkDescriptorPoolSize poolSizes[] = {
       {.type = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, // For velocityField
-       .descriptorCount = 1},
+       .descriptorCount = 16},
       {.type = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, // For SimulationParams
-       .descriptorCount = 1}};
+       .descriptorCount = 16},
+      {.type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+       .descriptorCount = 16}};
 
   VkDescriptorPoolCreateInfo poolInfo = {
       .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-      .poolSizeCount = 2,
+      .poolSizeCount = sizeof(poolSizes) / sizeof(poolSizes[0]),
       .pPoolSizes = poolSizes,
-      .maxSets = 1, // One descriptor set containing both descriptors
-      .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT
-  };
+      .maxSets = 16, // One descriptor set containing both descriptors
+      .flags = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT};
 
   if (vkCreateDescriptorPool(pApp->device, &poolInfo, NULL,
                              &pApp->descriptorPool) != VK_SUCCESS) {
@@ -391,70 +386,47 @@ void createSyncObjects(App *pApp) {
   }
 }
 
-void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex,
-                         App *pApp) {
-  VkCommandBufferBeginInfo beginInfo = {
-      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-      .flags = 0,               // Optional
-      .pInheritanceInfo = NULL, // Optional
-  };
+void recordCommandBuffer(VkCommandBuffer commandBuffer, uint32_t imageIndex, App *pApp) {
+    // Remove the begin/end command buffer calls since they're handled in drawFrame
+    VkRenderPassBeginInfo renderPassInfo = {
+        .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+        .renderPass = pApp->renderPass,
+        .framebuffer = pApp->swapchainFramebuffers[imageIndex],
+        .renderArea.offset = {0, 0},
+        .renderArea.extent = pApp->swapChainExtent,
+    };
 
-  if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS) {
-    printf("failed to begin recording command buffer!\n");
-    abort();
-  }
+    VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
+    renderPassInfo.clearValueCount = 1;
+    renderPassInfo.pClearValues = &clearColor;
 
-  VkRenderPassBeginInfo renderPassInfo = {
-      .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-      .renderPass = pApp->renderPass,
-      .framebuffer = pApp->swapchainFramebuffers[imageIndex],
-      .renderArea.offset = {0, 0},
-      .renderArea.extent = pApp->swapChainExtent,
-  };
+    vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
 
-  VkClearValue clearColor = {{{0.0f, 0.0f, 0.0f, 1.0f}}};
-  renderPassInfo.clearValueCount = 1;
-  renderPassInfo.pClearValues = &clearColor;
+    vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS, pApp->graphicsPipeline);
 
-  vkCmdBeginRenderPass(commandBuffer, &renderPassInfo,
-                       VK_SUBPASS_CONTENTS_INLINE);
+    VkBuffer vertexBuffers[] = {pApp->vertexBuffer};
+    VkDeviceSize offsets[] = {0};
+    vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+    vkCmdBindIndexBuffer(commandBuffer, pApp->indexBuffer, 0, VK_INDEX_TYPE_UINT16);
 
-  vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    pApp->graphicsPipeline);
+    VkViewport viewport = {
+        .x = 0.0f,
+        .y = 0.0f,
+        .width = (float)pApp->swapChainExtent.width,
+        .height = (float)pApp->swapChainExtent.height,
+        .minDepth = 0.0f,
+        .maxDepth = 1.0f,
+    };
+    vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
 
-  VkBuffer vertexBuffers[] = {pApp->vertexBuffer};
-  VkDeviceSize offsets[] = {0};
-  vkCmdBindVertexBuffers(commandBuffer, 0, 1, vertexBuffers, offsets);
+    VkRect2D scissor = {
+        .offset = {0, 0},
+        .extent = pApp->swapChainExtent,
+    };
+    vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
 
-  vkCmdBindIndexBuffer(commandBuffer, pApp->indexBuffer, 0,
-                       VK_INDEX_TYPE_UINT16);
-
-  VkViewport viewport = {
-      .x = 0.0f,
-      .y = 0.0f,
-      .width = (float)pApp->swapChainExtent.width,
-      .height = (float)pApp->swapChainExtent.height,
-      .minDepth = 0.0f,
-      .maxDepth = 1.0f,
-  };
-
-  vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-  VkRect2D scissor = {
-      .offset = {0, 0},
-      .extent = pApp->swapChainExtent,
-  };
-
-  vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-  vkCmdDrawIndexed(commandBuffer, pApp->indicesCount, 1, 0, 0, 0);
-
-  vkCmdEndRenderPass(commandBuffer);
-
-  if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS) {
-    printf("failed to record command buffer!\n");
-    abort();
-  }
+    vkCmdDrawIndexed(commandBuffer, pApp->indicesCount, 1, 0, 0, 0);
+    vkCmdEndRenderPass(commandBuffer);
 }
 
 void createCommandBuffers(App *pApp) {
@@ -699,78 +671,85 @@ void createGraphicsPipeline(App *pApp) {
 }
 
 void drawFrame(App *pApp) {
-  vkWaitForFences(pApp->device, 1, &pApp->inFlightFences[pApp->currentFrame],
-                  VK_TRUE, UINT64_MAX);
-  vkResetFences(pApp->device, 1, &pApp->inFlightFences[pApp->currentFrame]);
+    vkWaitForFences(pApp->device, 1, &pApp->inFlightFences[pApp->currentFrame], VK_TRUE, UINT64_MAX);
 
-  uint32_t imageIndex;
-  VkResult result =
-      vkAcquireNextImageKHR(pApp->device, pApp->swapChain, UINT64_MAX,
-                            pApp->imageAvailableSemaphores[pApp->currentFrame],
-                            VK_NULL_HANDLE, &imageIndex);
+    uint32_t imageIndex;
+    VkResult result = vkAcquireNextImageKHR(pApp->device, pApp->swapChain, UINT64_MAX,
+                                           pApp->imageAvailableSemaphores[pApp->currentFrame],
+                                           VK_NULL_HANDLE, &imageIndex);
 
-  if (result == VK_ERROR_OUT_OF_DATE_KHR) {
-    recreateSwapChain(pApp);
-    return;
-  } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
-    printf("failed to acquire swap chain image!\n");
-    abort();
-  }
+    if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+        recreateSwapChain(pApp);
+        return;
+    } else if (result != VK_SUCCESS && result != VK_SUBOPTIMAL_KHR) {
+        printf("failed to acquire swap chain image!\n");
+        abort();
+    }
 
-  vkResetCommandBuffer(pApp->commandBuffers[pApp->currentFrame], 0);
-  updateFluidSim(pApp->commandBuffers[pApp->currentFrame], &pApp->fluidSim);
-  recordCommandBuffer(pApp->commandBuffers[pApp->currentFrame], imageIndex,
-                      pApp);
+    // Reset command buffer and begin recording
+    vkResetCommandBuffer(pApp->commandBuffers[pApp->currentFrame], 0);
+    
+    VkCommandBufferBeginInfo beginInfo = {
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = 0
+    };
 
-  VkSubmitInfo submitInfo = {
-      .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-  };
+    if (vkBeginCommandBuffer(pApp->commandBuffers[pApp->currentFrame], &beginInfo) != VK_SUCCESS) {
+        printf("failed to begin recording command buffer!\n");
+        abort();
+    }
 
-  VkSemaphore waitSemaphores[] = {
-      pApp->imageAvailableSemaphores[pApp->currentFrame]};
-  VkPipelineStageFlags waitStages[] = {
-      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
-  submitInfo.waitSemaphoreCount = 1;
-  submitInfo.pWaitSemaphores = waitSemaphores;
-  submitInfo.pWaitDstStageMask = waitStages;
+    // Record all commands in sequence
+    updateFluidSim(pApp->commandBuffers[pApp->currentFrame], &pApp->fluidSim);
+    recordCommandBuffer(pApp->commandBuffers[pApp->currentFrame], imageIndex, pApp);
 
-  submitInfo.commandBufferCount = 1;
-  submitInfo.pCommandBuffers = &pApp->commandBuffers[pApp->currentFrame];
+    // End command buffer recording
+    if (vkEndCommandBuffer(pApp->commandBuffers[pApp->currentFrame]) != VK_SUCCESS) {
+        printf("failed to record command buffer!\n");
+        abort();
+    }
 
-  VkSemaphore signalSemaphores[] = {
-      pApp->renderFinishedSemaphores[pApp->currentFrame]};
-  submitInfo.signalSemaphoreCount = 1;
-  submitInfo.pSignalSemaphores = signalSemaphores;
+    // Submit command buffer
+    VkSubmitInfo submitInfo = {
+        .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = &pApp->imageAvailableSemaphores[pApp->currentFrame],
+        .pWaitDstStageMask = &(VkPipelineStageFlags){VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT},
+        .commandBufferCount = 1,
+        .pCommandBuffers = &pApp->commandBuffers[pApp->currentFrame],
+        .signalSemaphoreCount = 1,
+        .pSignalSemaphores = &pApp->renderFinishedSemaphores[pApp->currentFrame]
+    };
 
-  if (vkQueueSubmit(pApp->graphicsQueue, 1, &submitInfo,
-                    pApp->inFlightFences[pApp->currentFrame]) != VK_SUCCESS) {
-    printf("failed to submit draw command buffer!\n");
-    abort();
-  }
+    vkResetFences(pApp->device, 1, &pApp->inFlightFences[pApp->currentFrame]);
+    
+    if (vkQueueSubmit(pApp->graphicsQueue, 1, &submitInfo, 
+                      pApp->inFlightFences[pApp->currentFrame]) != VK_SUCCESS) {
+        printf("failed to submit draw command buffer!\n");
+        abort();
+    }
 
-  VkPresentInfoKHR presentInfo = {
-      .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-      .waitSemaphoreCount = 1,
-      .pWaitSemaphores = signalSemaphores,
-  };
+    VkPresentInfoKHR presentInfo = {
+        .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+        .waitSemaphoreCount = 1,
+        .pWaitSemaphores = &pApp->renderFinishedSemaphores[pApp->currentFrame],
+        .swapchainCount = 1,
+        .pSwapchains = &pApp->swapChain,
+        .pImageIndices = &imageIndex,
+    };
 
-  VkSwapchainKHR swapChains[] = {pApp->swapChain};
-  presentInfo.swapchainCount = 1;
-  presentInfo.pSwapchains = swapChains;
-  presentInfo.pImageIndices = &imageIndex;
-  presentInfo.pResults = NULL; // Optional
+    result = vkQueuePresentKHR(pApp->presentationQueue, &presentInfo);
 
-  result = vkQueuePresentKHR(pApp->presentationQueue, &presentInfo);
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR || 
+        pApp->framebufferResized) {
+        pApp->framebufferResized = false;
+        recreateSwapChain(pApp);
+    } else if (result != VK_SUCCESS) {
+        printf("failed to present swap chain image!\n");
+        abort();
+    }
 
-  if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-    pApp->framebufferResized = false;
-    recreateSwapChain(pApp);
-  } else if (result != VK_SUCCESS) {
-    printf("failed to present swap chain image!\n");
-    abort();
-  }
-
-  pApp->currentFrame = (pApp->currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
+    pApp->currentFrame = (pApp->currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
 }
 
 VkShaderModule createShaderModule(Shaderfile shader, App *pApp) {

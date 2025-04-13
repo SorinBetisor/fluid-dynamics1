@@ -2,36 +2,150 @@
 
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
-layout(set = 0, binding = 0) buffer VelocityField {
+// Velocity field storage buffer
+layout(std430, binding = 0) buffer VelocityBuffer {
     vec4 velocities[];
-} velocityField;
+};
 
-layout(set = 0, binding = 1) uniform SimulationParams {
-    float dt;
+// Simulation parameters
+layout(std140, binding = 1) uniform SimParams {
+    float deltaTime;
     float viscosity;
-} simParams;
+    float density;
+    int gridWidth;
+    int gridHeight;
+};
+
+// Object data
+struct FluidObject {
+    vec2 position;
+    float radius;
+    int type;        // 0 for circle, 1 for airfoil
+    vec2 points[64]; // For airfoil points (limited to 64 points for simplicity)
+    int numPoints;
+};
+
+layout(std140, binding = 2) uniform ObjectBuffer {
+    FluidObject objects[10]; // Support up to 10 objects
+    int numObjects;
+};
+
+// Helper function to check if point is inside or near an object and get normal vector
+vec2 getObjectInteraction(vec2 pos, out bool isNear) {
+    isNear = false;
+    vec2 normal = vec2(0.0);
+    
+    for (int i = 0; i < numObjects; i++) {
+        if (objects[i].type == 0) { // Circle
+            vec2 toCenter = pos - objects[i].position;
+            float dist = length(toCenter);
+            float boundary = objects[i].radius + 0.05;
+            
+            if (dist < boundary) {
+                isNear = true;
+                normal = normalize(toCenter);
+                return normal;
+            }
+        } else if (objects[i].type == 1) { // Airfoil
+            for (int j = 0; j < objects[i].numPoints - 1; j++) {
+                vec2 p1 = objects[i].points[j];
+                vec2 p2 = objects[i].points[j + 1];
+                
+                vec2 line = p2 - p1;
+                vec2 point = pos - p1;
+                float len = length(line);
+                float t = clamp(dot(point, line) / (len * len), 0.0, 1.0);
+                vec2 projection = p1 + t * line;
+                float dist = distance(pos, projection);
+                
+                if (dist < 0.05) {
+                    isNear = true;
+                    normal = normalize(pos - projection);
+                    return normal;
+                }
+            }
+        }
+    }
+    return normal;
+}
 
 void main() {
-    ivec2 coords = ivec2(gl_GlobalInvocationID.xy);
-    uint index = coords.y * gl_NumWorkGroups.x * gl_WorkGroupSize.x + coords.x;
+    ivec2 pos = ivec2(gl_GlobalInvocationID.xy);
+    if (pos.x >= gridWidth || pos.y >= gridHeight) return;
+
+    int idx = pos.y * gridWidth + pos.x;
+    vec2 normalizedPos = vec2(float(pos.x) / float(gridWidth),
+                             float(pos.y) / float(gridHeight));
+
+    // Get current velocity
+    vec2 velocity = velocities[idx].xy;
     
-    // Read current velocity
-    vec4 velocity = velocityField.velocities[index];
+    // Check for object interaction
+    bool isNearObject;
+    vec2 objectNormal = getObjectInteraction(normalizedPos, isNearObject);
     
-    // Apply viscous diffusion
-    // Simple damping based on viscosity
-    vec2 newVelocity = velocity.xy * (1.0 - simParams.viscosity * simParams.dt);
+    if (isNearObject) {
+        // Apply boundary condition: reflect velocity off the surface
+        vec2 reflectedVel = velocity - 2.0 * dot(velocity, objectNormal) * objectNormal;
+        // Add drag effect
+        reflectedVel *= 0.8; // Drag coefficient
+        velocities[idx] = vec4(reflectedVel, 0.0, 1.0);
+        return;
+    }
+
+    // Apply Navier-Stokes equations
+    vec2 laplacian = vec2(0.0);
+    vec2 advection = vec2(0.0);
+    float pressure = 0.0;
     
-    // Basic advection
-    // Move the velocity based on itself and timestep
-    vec2 position = vec2(coords) - newVelocity * simParams.dt;
-    
-    // Simple boundary conditions
-    // Keep velocities within bounds
-    newVelocity = mix(newVelocity, vec2(0.0), 
-        vec2(position.x < 0.0 || position.x >= gl_NumWorkGroups.x * gl_WorkGroupSize.x,
-             position.y < 0.0 || position.y >= gl_NumWorkGroups.y * gl_WorkGroupSize.y));
-    
-    // Store result
-    velocityField.velocities[index] = vec4(newVelocity, velocity.zw);
+    // Compute Laplacian (diffusion term) with pressure
+    for (int dy = -1; dy <= 1; dy++) {
+        for (int dx = -1; dx <= 1; dx++) {
+            ivec2 neighbor = pos + ivec2(dx, dy);
+            if (neighbor.x >= 0 && neighbor.x < gridWidth &&
+                neighbor.y >= 0 && neighbor.y < gridHeight) {
+                int nIdx = neighbor.y * gridWidth + neighbor.x;
+                vec2 neighborVel = velocities[nIdx].xy;
+                laplacian += neighborVel;
+                
+                // Compute pressure from velocity divergence
+                pressure += dot(neighborVel - velocity, 
+                              vec2(float(dx), float(dy))) / 8.0;
+            }
+        }
+    }
+    laplacian = laplacian / 9.0 - velocity;
+
+    // Compute advection term with improved stability
+    vec2 backPos = normalizedPos - velocity * deltaTime;
+    ivec2 cell = ivec2(backPos * vec2(gridWidth, gridHeight));
+    if (cell.x >= 0 && cell.x < gridWidth &&
+        cell.y >= 0 && cell.y < gridHeight) {
+        int backIdx = cell.y * gridWidth + cell.x;
+        advection = velocities[backIdx].xy - velocity;
+    }
+
+    // Add pressure gradient
+    vec2 pressureGradient = pressure * normalize(velocity + vec2(0.0001));
+
+    // Update velocity with improved physics
+    vec2 newVelocity = velocity + deltaTime * (
+        viscosity * laplacian -    // Diffusion
+        advection -                // Advection
+        pressureGradient          // Pressure
+    );
+
+    // Add vorticity confinement
+    float curl = length(cross(vec3(velocity, 0), vec3(laplacian, 0)));
+    vec2 vorticity = curl * vec2(-velocity.y, velocity.x) * 0.1;
+    newVelocity += vorticity * deltaTime;
+
+    // Limit velocity magnitude for stability
+    float maxVel = 2.0;
+    if (length(newVelocity) > maxVel) {
+        newVelocity = normalize(newVelocity) * maxVel;
+    }
+
+    // Store new velocity
+    velocities[idx] = vec4(newVelocity, 0.0, 0.0);
 }

@@ -20,6 +20,8 @@
 #define HEIGHT 600
 #define NAME "TEST"
 
+#define MAX_OBJECTS 100
+
 #define MAX_FRAMES_IN_FLIGHT 2
 
 #define ATTRIBUTE_COUNT 2
