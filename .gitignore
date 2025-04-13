@@ -1,6 +1,0 @@
-#Ide realated
-.vscode/
-
-#Project related 
-build/
-pyenv/
