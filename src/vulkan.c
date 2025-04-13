@@ -500,11 +500,12 @@ void createCommandPool(App *pApp)
 
 void createGraphicsPipeline(App *pApp)
 {
-  Shaderfile fragShaderCode = readShaderFile("shaders/frag.spv");
-  Shaderfile vertShaderCode = readShaderFile("shaders/vert.spv");
+  // Load shaders
+  Shaderfile fragShaderCode = readShaderFile("../shaders/frag.spv");
+  Shaderfile vertShaderCode = readShaderFile("../shaders/vert.spv");
 
-  VkShaderModule vertShaderModule = createShaderModule(vertShaderCode, pApp);
   VkShaderModule fragShaderModule = createShaderModule(fragShaderCode, pApp);
+  VkShaderModule vertShaderModule = createShaderModule(vertShaderCode, pApp);
 
   VkPipelineShaderStageCreateInfo vertShaderStageInfo = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -866,7 +867,7 @@ void cleanup(App *pApp)
   {
     free(pApp->swapChainImages);
   }
-  if (enableValidationLayers)
+  if (pApp->useValidationLayers && pApp->debugMessanger != VK_NULL_HANDLE)
   {
     DestroyDebugUtilsMessengerEXT(pApp->instance, pApp->debugMessanger, NULL);
   }
@@ -880,9 +881,11 @@ void cleanup(App *pApp)
 
 void createInstance(App *pApp)
 {
-  if (enableValidationLayers && !checkValidationLayerSupport())
-  {
-    printf("Validation Layers requested but not available\n");
+  // Just disable validation layers entirely on macOS since they're problematic
+  bool useValidationLayers = false;
+  
+  if (enableValidationLayers) {
+    printf("Validation layers requested but disabled on macOS due to compatibility issues.\n");
   }
 
   VkApplicationInfo appInfo = {
@@ -896,6 +899,8 @@ void createInstance(App *pApp)
   uint32_t SDLExtensionCount = 0;
   SDL_Vulkan_GetInstanceExtensions(pApp->window, &SDLExtensionCount, NULL);
 
+  printf("Required SDL extensions count: %d\n", SDLExtensionCount);
+
   const char **SDLExtensions = malloc(SDLExtensionCount * sizeof(char *));
   if (!SDLExtensions)
   {
@@ -906,7 +911,22 @@ void createInstance(App *pApp)
 
   SDL_Vulkan_GetInstanceExtensions(pApp->window, &SDLExtensionCount, SDLExtensions);
 
-  const char **extensions = malloc((SDLExtensionCount + 1) * sizeof(char *));
+  // Print SDL extensions
+  printf("SDL extensions:\n");
+  for (uint32_t i = 0; i < SDLExtensionCount; i++) {
+    printf("  %s\n", SDLExtensions[i]);
+  }
+
+  // For macOS/MoltenVK, we need to add the portability extension
+  uint32_t additionalExtensionCount = 0;
+  if (useValidationLayers) {
+    additionalExtensionCount++;
+  }
+  // Add portability extension for macOS
+  additionalExtensionCount++;
+
+  uint32_t totalExtensionCount = SDLExtensionCount + additionalExtensionCount;
+  const char **extensions = malloc(totalExtensionCount * sizeof(char *));
   if (!extensions)
   {
     fprintf(stderr, "Failed to allocate memory for extensions.\n");
@@ -914,24 +934,60 @@ void createInstance(App *pApp)
     free(SDLExtensions);
     abort();
   }
+  
   memcpy(extensions, SDLExtensions, SDLExtensionCount * sizeof(char *));
-  if (enableValidationLayers)
+  
+  // Add additional extensions
+  uint32_t currentExtension = SDLExtensionCount;
+  
+  // Add portability extension for macOS
+  extensions[currentExtension++] = VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME;
+  printf("Added extension for macOS: %s\n", VK_KHR_PORTABILITY_ENUMERATION_EXTENSION_NAME);
+  
+  if (useValidationLayers)
   {
-    extensions[SDLExtensionCount] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
-    SDLExtensionCount++;
+    extensions[currentExtension++] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
+    printf("Added extension for validation layers: %s\n", VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
   }
 
   VkInstanceCreateInfo createInfo = {
       .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
       .pApplicationInfo = &appInfo,
-      .enabledExtensionCount = SDLExtensionCount,
+      .enabledExtensionCount = totalExtensionCount,
       .ppEnabledExtensionNames = extensions,
-      .enabledLayerCount = enableValidationLayers ? validationLayerCount : 0,
-      .ppEnabledLayerNames = enableValidationLayers ? validationLayers : NULL};
+      .enabledLayerCount = useValidationLayers ? validationLayerCount : 0,
+      .ppEnabledLayerNames = useValidationLayers ? validationLayers : NULL,
+      .flags = VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR}; // Flag needed for macOS
 
-  if (vkCreateInstance(&createInfo, NULL, &pApp->instance) != VK_SUCCESS)
+  // Print validation layers being used (if any)
+  if (useValidationLayers) {
+    printf("Enabling validation layers:\n");
+    for (uint32_t i = 0; i < validationLayerCount; i++) {
+      printf("  %s\n", validationLayers[i]);
+    }
+  }
+
+  // Create the instance and check for errors
+  VkResult result = vkCreateInstance(&createInfo, NULL, &pApp->instance);
+  if (result != VK_SUCCESS)
   {
-    printf("Failed to create Vulkan Instance\n");
+    printf("Failed to create Vulkan Instance. Error code: %d\n", result);
+    
+    // Provide more information about specific errors
+    switch (result) {
+      case VK_ERROR_INCOMPATIBLE_DRIVER:
+        printf("Error: Incompatible driver. Your GPU driver doesn't support Vulkan or its version is incompatible.\n");
+        break;
+      case VK_ERROR_EXTENSION_NOT_PRESENT:
+        printf("Error: Extension not present. One of the requested extensions is not supported.\n");
+        break;
+      case VK_ERROR_LAYER_NOT_PRESENT:
+        printf("Error: Validation layer not present. One of the requested validation layers is not supported.\n");
+        break;
+      default:
+        printf("Error: Unknown error.\n");
+        break;
+    }
 
     free(SDLExtensions);
     free(extensions);
@@ -942,6 +998,211 @@ void createInstance(App *pApp)
   free(extensions);
 
   printf("Vulkan Instance created successfully.\n");
+  
+  // Store whether we're using validation layers for other parts of the code
+  pApp->useValidationLayers = useValidationLayers;
+}
+
+bool checkValidationLayerSupport()
+{
+  uint32_t layerCount = 0;
+  vkEnumerateInstanceLayerProperties(&layerCount, NULL);
+
+  printf("Available Vulkan layers (%d):\n", layerCount);
+  
+  // Dynamically allocate memory for available layers
+  VkLayerProperties *availableLayers = (VkLayerProperties *)malloc(layerCount * sizeof(VkLayerProperties));
+  if (!availableLayers)
+  {
+    fprintf(stderr, "Failed to allocate memory for layer properties.\n");
+    free(availableLayers);
+    abort();
+  }
+  vkEnumerateInstanceLayerProperties(&layerCount, availableLayers);
+  
+  // Print all available layers
+  for (uint32_t j = 0; j < layerCount; j++)
+  {
+    printf("  %s\n", availableLayers[j].layerName);
+  }
+  
+  for (uint32_t i = 0; i < validationLayerCount; i++)
+  {
+    printf("Searching for validation layer: %s\n", validationLayers[i]);
+    bool layerFound = false;
+    for (uint32_t j = 0; j < layerCount; j++)
+    {
+      // Print exact comparison for debug purposes
+      printf("Comparing '%s' with '%s': result=%d\n", 
+          availableLayers[j].layerName, 
+          validationLayers[i], 
+          strcmp(availableLayers[j].layerName, validationLayers[i]));
+          
+      if (strcmp(availableLayers[j].layerName, validationLayers[i]) == 0)
+      {
+        layerFound = true;
+        printf("Found validation layer: %s\n", availableLayers[j].layerName);
+        break;
+      }
+    }
+    if (!layerFound)
+    {
+      printf("Validation layer %s not found!\n", validationLayers[i]);
+      free(availableLayers);
+      return false;
+    }
+  }
+  free(availableLayers);
+  return true;
+}
+
+void setupDebugMessenger(App *pApp)
+{
+  if (!pApp->useValidationLayers)
+    return;
+    
+  // First check if the validation layers are actually available
+  if (!checkValidationLayerSupport()) {
+    printf("Skipping debug messenger setup because validation layers are not available.\n");
+    return;
+  }
+
+  VkDebugUtilsMessengerCreateInfoEXT createInfo = {
+      .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+      .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
+      .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+      .pfnUserCallback = debugCallback,
+      .pUserData = NULL};
+      
+  VkResult result = CreateDebugUtilsMessengerEXT(pApp->instance, &createInfo, NULL, &pApp->debugMessanger);
+  if (result != VK_SUCCESS)
+  {
+    printf("Failed to set up debug messenger. Error code: %d\n", result);
+    return;
+  }
+  
+  printf("Debug messenger set up successfully.\n");
+}
+
+void createLogicalDevice(App *pApp)
+{
+  QueueFamilyIndices indices = pApp->QueueFamilyIndices;
+
+  VkPhysicalDeviceFeatures deviceFeatures;
+  vkGetPhysicalDeviceFeatures(pApp->physicalDevice, &deviceFeatures);
+
+  // Queue priority
+  const float queuePriority = 1.0f;
+
+  // Create queue info
+  VkDeviceQueueCreateInfo queueCreateInfos[3];
+  uint32_t queueCreateInfoCount = 0;
+
+  if (indices.graphicsFamily == indices.presentationFamily && indices.graphicsFamily == indices.transferFamily)
+  {
+    // Single queue family handles both graphics, presentation, and transfer
+    VkDeviceQueueCreateInfo queueCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+        .queueFamilyIndex = indices.graphicsFamily,
+        .queueCount = 1,
+        .pQueuePriorities = &queuePriority,
+    };
+    queueCreateInfos[queueCreateInfoCount++] = queueCreateInfo;
+  }
+  else if (indices.graphicsFamily == indices.presentationFamily)
+  {
+    // Separate queue families for transfer only
+    VkDeviceQueueCreateInfo queueCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+        .queueFamilyIndex = indices.graphicsFamily,
+        .queueCount = 1,
+        .pQueuePriorities = &queuePriority,
+    };
+    queueCreateInfos[queueCreateInfoCount++] = queueCreateInfo;
+
+    if (indices.graphicsFamily != indices.transferFamily)
+    {
+      VkDeviceQueueCreateInfo transferQueueCreateInfo = {
+          .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+          .queueFamilyIndex = indices.transferFamily,
+          .queueCount = 1,
+          .pQueuePriorities = &queuePriority,
+      };
+      queueCreateInfos[queueCreateInfoCount++] = transferQueueCreateInfo;
+    }
+  }
+  else
+  {
+    // Separate queue families for graphics and presentation and optionally transfer
+    VkDeviceQueueCreateInfo graphicsQueueCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+        .queueFamilyIndex = indices.graphicsFamily,
+        .queueCount = 1,
+        .pQueuePriorities = &queuePriority,
+    };
+    queueCreateInfos[queueCreateInfoCount++] = graphicsQueueCreateInfo;
+
+    VkDeviceQueueCreateInfo presentQueueCreateInfo = {
+        .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+        .queueFamilyIndex = indices.presentationFamily,
+        .queueCount = 1,
+        .pQueuePriorities = &queuePriority,
+    };
+    queueCreateInfos[queueCreateInfoCount++] = presentQueueCreateInfo;
+
+    if (indices.graphicsFamily != indices.transferFamily && indices.presentationFamily != indices.transferFamily)
+    {
+      VkDeviceQueueCreateInfo transferQueueCreateInfo = {
+          .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
+          .queueFamilyIndex = indices.transferFamily,
+          .queueCount = 1,
+          .pQueuePriorities = &queuePriority,
+      };
+      queueCreateInfos[queueCreateInfoCount++] = transferQueueCreateInfo;
+    }
+  }
+
+  VkDeviceCreateInfo createInfo = {
+      .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+      .pQueueCreateInfos = queueCreateInfos,
+      .queueCreateInfoCount = queueCreateInfoCount,
+      .pEnabledFeatures = &deviceFeatures,
+      .enabledExtensionCount = deviceExtensionCount,
+      .ppEnabledExtensionNames = deviceExtensions};
+
+  if (pApp->useValidationLayers)
+  {
+    createInfo.enabledLayerCount = validationLayerCount;
+    createInfo.ppEnabledLayerNames = validationLayers;
+  }
+  else
+  {
+    createInfo.enabledLayerCount = 0;
+  }
+
+  if (vkCreateDevice(pApp->physicalDevice, &createInfo, NULL, &pApp->device) != VK_SUCCESS)
+  {
+    printf("failed to create logical device! \n");
+    abort();
+  }
+  printf("logical device created \n");
+
+  // Retrieve graphics queue
+  vkGetDeviceQueue(pApp->device, indices.graphicsFamily, 0, &pApp->graphicsQueue);
+
+  // Retrieve presentation queue (reuse graphics queue if families are identical)
+  if (indices.graphicsFamily == indices.presentationFamily)
+  {
+    pApp->presentationQueue = pApp->graphicsQueue; // Reuse
+    printf("reused graphics queue \n");
+  }
+  else
+  {
+    printf("didnt reuse graphics queue \n");
+    vkGetDeviceQueue(pApp->device, indices.presentationFamily, 0, &pApp->presentationQueue);
+  }
+  // Added
+  vkGetDeviceQueue(pApp->device, indices.transferFamily, 0, &pApp->transferQueue);
 }
 
 void createSurface(App *pApp)
@@ -954,78 +1215,175 @@ void createSurface(App *pApp)
   printf("surface created\n");
 }
 
-bool checkValidationLayerSupport()
+void pickPhysicalDevice(App *pApp)
 {
-  uint32_t layerCount = 0;
-  vkEnumerateInstanceLayerProperties(&layerCount, NULL);
-
-  // Dynamically allocate memory for available layers
-  VkLayerProperties *availableLayers = (VkLayerProperties *)malloc(layerCount * sizeof(VkLayerProperties));
-  if (!availableLayers)
+  uint32_t deviceCount = 0;
+  VkResult result = vkEnumeratePhysicalDevices(pApp->instance, &deviceCount, NULL);
+  
+  if (result != VK_SUCCESS || deviceCount == 0)
   {
-    fprintf(stderr, "Failed to allocate memory for layer properties.\n");
-    free(availableLayers);
+    printf("Failed to find GPUs with Vulkan support. Error code: %d\n", result);
     abort();
   }
-  vkEnumerateInstanceLayerProperties(&layerCount, availableLayers);
-  for (uint32_t i = 0; i < validationLayerCount; i++)
-  {
-    bool layerFound = false;
-    for (uint32_t j = 0; j < layerCount; j++)
-    {
-      if (strcmp(availableLayers[j].layerName, validationLayers[i]))
-      {
-        layerFound = true;
-        printf("%s\n", availableLayers[j].layerName);
-        break;
-      }
-    }
-    if (!layerFound)
-    {
-      free(availableLayers);
-      return false;
-    }
+  
+  printf("Found %u physical devices\n", deviceCount);
+  
+  VkPhysicalDevice* physicalDevices = (VkPhysicalDevice*)malloc(deviceCount * sizeof(VkPhysicalDevice));
+  if (!physicalDevices) {
+    printf("Failed to allocate memory for physical devices\n");
+    abort();
   }
-  free(availableLayers);
-  return true;
+  
+  result = vkEnumeratePhysicalDevices(pApp->instance, &deviceCount, physicalDevices);
+  if (result != VK_SUCCESS) {
+    printf("Failed to enumerate physical devices. Error code: %d\n", result);
+    free(physicalDevices);
+    abort();
+  }
+  
+  // Print information about all available devices
+  for (uint32_t i = 0; i < deviceCount; i++) {
+    VkPhysicalDeviceProperties deviceProperties;
+    vkGetPhysicalDeviceProperties(physicalDevices[i], &deviceProperties);
+    printf("Device %u: %s\n", i, deviceProperties.deviceName);
+  }
+  
+  // Use the first available device for now (simpler solution for macOS)
+  pApp->physicalDevice = physicalDevices[0];
+  
+  // Confirm the selected device
+  VkPhysicalDeviceProperties deviceProperties;
+  vkGetPhysicalDeviceProperties(pApp->physicalDevice, &deviceProperties);
+  printf("Selected device: %s\n", deviceProperties.deviceName);
+  
+  // Get queue families for the selected device
+  QueueFamilyIndices indices = findQueueFamilies(pApp->physicalDevice, pApp->surface);
+  pApp->QueueFamilyIndices = indices;
+  
+  // Free the array now that we've selected a device
+  free(physicalDevices);
 }
 
-bool checkDeviceExtensionSupport(VkPhysicalDevice device)
+uint32_t rateDeviceSuitability(VkPhysicalDevice device, VkSurfaceKHR surface)
 {
-  uint32_t extensionCount;
-  vkEnumerateDeviceExtensionProperties(device, NULL, &extensionCount, NULL);
+  VkPhysicalDeviceProperties deviceProperties;
+  VkPhysicalDeviceFeatures deviceFeatures;
 
-  VkExtensionProperties *availableExtensions = malloc(sizeof(VkExtensionProperties) * extensionCount);
-  if (!availableExtensions)
+  vkGetPhysicalDeviceProperties(device, &deviceProperties);
+  vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
+
+  uint32_t score = 0;
+
+  if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
   {
-    fprintf(stderr, "Failed to allocate memory for extension check.\n");
-    free(availableExtensions);
+    score += 1000;
+  }
+
+  score += deviceProperties.limits.maxImageDimension2D;
+
+  if (!deviceFeatures.geometryShader)
+  {
+    return 0;
+  }
+
+  // NOTE: To improve performance we could favour the queue families that have both graphics and present support.
+  // We could check the returned indecies and check if they are the same increase the score.
+  QueueFamilyIndices indices = findQueueFamilies(device, surface);
+  if (!indices.isGraphicsFamilySet)
+  {
+    printf("Queue family not supported \n");
+    return 0;
+  }
+
+  bool extensionSupported = checkDeviceExtensionSupport(device);
+
+  if (!extensionSupported)
+  {
+    printf("No extension support provided \n");
+    return 0;
+  }
+
+  SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device, surface);
+  if (swapChainSupport.formatCount == 0 || swapChainSupport.presentModeCount == 0)
+  {
+    printf("Cant create swapchain\n");
+    freeSwapChainSupportDetails(&swapChainSupport);
+    return 0;
+  }
+  freeSwapChainSupportDetails(&swapChainSupport);
+
+  return score;
+}
+
+QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface)
+{
+  QueueFamilyIndices indices = {0};
+
+  uint32_t queueFamilyCount = 0;
+  vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, NULL);
+
+  VkQueueFamilyProperties *queueFamilies =
+      malloc(sizeof(VkQueueFamilyProperties) * queueFamilyCount);
+  if (!queueFamilies)
+  {
+    fprintf(stderr, "Failed to allocate memory for queueFamilies.\n");
     abort();
   }
+  vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies);
 
-  vkEnumerateDeviceExtensionProperties(device, NULL, &extensionCount, availableExtensions);
-  for (uint32_t i = 0; i < deviceExtensionCount; i++)
+  printf("Found %u queue families\n", queueFamilyCount);
+  
+  // We loop through all families to find any that support
+  // both graphics and present. We do NOT break immediately,
+  // so that we can check if there's a single queue that supports both.
+  for (uint32_t i = 0; i < queueFamilyCount; i++)
   {
-    bool extensionfound = false;
-    for (uint32_t j = 0; j < extensionCount; j++)
+    // Check for graphics support
+    if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
     {
-      // printf("checking %s = %s \n", deviceExtensions[i], availableExtensions[j].extensionName);
-      if (strcmp(deviceExtensions[i], availableExtensions[j].extensionName) == 0)
-      {
-        extensionfound = true;
-        break;
-      }
+      indices.graphicsFamily = i;
+      indices.isGraphicsFamilySet = true;
+      printf("Queue %u supports graphics\n", i);
     }
-    if (!extensionfound)
+    
+    // Check for transfer support but not graphics support
+    if ((queueFamilies[i].queueFlags & VK_QUEUE_TRANSFER_BIT) && !(queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT))
     {
-      printf("Extension %s not found \n", deviceExtensions[i]);
-      free(availableExtensions);
-      return false;
+      indices.transferFamily = i;
+      indices.isTransferFamilySet = true;
+      printf("Queue %u supports transfer\n", i);
+    }
+
+    // Check for present support
+    VkBool32 presentSupport = VK_FALSE;
+    vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
+    if (presentSupport)
+    {
+      indices.presentationFamily = i;
+      indices.isPresentFamilySet = true;
+      printf("Queue %u supports presentation\n", i);
     }
   }
-  printf("All extensions found \n");
-  free(availableExtensions);
-  return true;
+  
+  // If no dedicated transfer queue was found, use the graphics queue
+  if (!indices.isTransferFamilySet && indices.isGraphicsFamilySet) {
+    indices.transferFamily = indices.graphicsFamily;
+    indices.isTransferFamilySet = true;
+    printf("No dedicated transfer queue found, using graphics queue\n");
+  }
+
+  // Check that we have the required queues
+  if (!indices.isGraphicsFamilySet || !indices.isPresentFamilySet || !indices.isTransferFamilySet) {
+    printf("Missing required queue families:\n");
+    if (!indices.isGraphicsFamilySet) printf("- Graphics queue not found\n");
+    if (!indices.isPresentFamilySet) printf("- Presentation queue not found\n");
+    if (!indices.isTransferFamilySet) printf("- Transfer queue not found\n");
+  } else {
+    printf("All required queue families found\n");
+  }
+
+  free(queueFamilies);
+  return indices;
 }
 
 SwapChainSupportDetails querySwapChainSupport(VkPhysicalDevice device, VkSurfaceKHR surface)
@@ -1131,282 +1489,40 @@ VkExtent2D chooseSwapExtent(VkSurfaceCapabilitiesKHR *capabilities, App *pApp)
   }
 }
 
-uint32_t rateDeviceSuitability(VkPhysicalDevice device, VkSurfaceKHR surface)
+bool checkDeviceExtensionSupport(VkPhysicalDevice device)
 {
-  VkPhysicalDeviceProperties deviceProperties;
-  VkPhysicalDeviceFeatures deviceFeatures;
+  uint32_t extensionCount;
+  vkEnumerateDeviceExtensionProperties(device, NULL, &extensionCount, NULL);
 
-  vkGetPhysicalDeviceProperties(device, &deviceProperties);
-  vkGetPhysicalDeviceFeatures(device, &deviceFeatures);
-
-  uint32_t score = 0;
-
-  if (deviceProperties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+  VkExtensionProperties *availableExtensions = malloc(sizeof(VkExtensionProperties) * extensionCount);
+  if (!availableExtensions)
   {
-    score += 1000;
-  }
-
-  score += deviceProperties.limits.maxImageDimension2D;
-
-  if (!deviceFeatures.geometryShader)
-  {
-    return 0;
-  }
-
-  // NOTE: To improve performance we could favour the queue families that have both graphics and present support.
-  // We could check the returned indecies and check if they are the same increase the score.
-  QueueFamilyIndices indices = findQueueFamilies(device, surface);
-  if (!indices.isGraphicsFamilySet)
-  {
-    printf("Queue family not supported \n");
-    return 0;
-  }
-
-  bool extensionSupported = checkDeviceExtensionSupport(device);
-
-  if (!extensionSupported)
-  {
-    printf("No extension support provided \n");
-    return 0;
-  }
-
-  SwapChainSupportDetails swapChainSupport = querySwapChainSupport(device, surface);
-  if (swapChainSupport.formatCount == 0 || swapChainSupport.presentModeCount == 0)
-  {
-    printf("Cant create swapchain\n");
-    freeSwapChainSupportDetails(&swapChainSupport);
-    return 0;
-  }
-  freeSwapChainSupportDetails(&swapChainSupport);
-
-  return score;
-}
-
-QueueFamilyIndices findQueueFamilies(VkPhysicalDevice device, VkSurfaceKHR surface)
-{
-  QueueFamilyIndices indices = {0};
-
-  uint32_t queueFamilyCount = 0;
-  vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, NULL);
-
-  VkQueueFamilyProperties *queueFamilies =
-      malloc(sizeof(VkQueueFamilyProperties) * queueFamilyCount);
-  if (!queueFamilies)
-  {
-    fprintf(stderr, "Failed to allocate memory for queueFamilies.\n");
+    fprintf(stderr, "Failed to allocate memory for extension check.\n");
+    free(availableExtensions);
     abort();
   }
-  vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, queueFamilies);
 
-  // We loop through all families to find any that support
-  // both graphics and present. We do NOT break immediately,
-  // so that we can check if there's a single queue that supports both.
-  for (uint32_t i = 0; i < queueFamilyCount; i++)
+  vkEnumerateDeviceExtensionProperties(device, NULL, &extensionCount, availableExtensions);
+  for (uint32_t i = 0; i < deviceExtensionCount; i++)
   {
-    // Check for graphics support
-    if (queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT)
+    bool extensionfound = false;
+    for (uint32_t j = 0; j < extensionCount; j++)
     {
-      indices.graphicsFamily = i;
-      indices.isGraphicsFamilySet = true;
+      // printf("checking %s = %s \n", deviceExtensions[i], availableExtensions[j].extensionName);
+      if (strcmp(deviceExtensions[i], availableExtensions[j].extensionName) == 0)
+      {
+        extensionfound = true;
+        break;
+      }
     }
-    // Added
-    // Check for transfer support but not graphics support
-    if ((queueFamilies[i].queueFlags & VK_QUEUE_TRANSFER_BIT) && !(queueFamilies[i].queueFlags & VK_QUEUE_GRAPHICS_BIT))
+    if (!extensionfound)
     {
-      indices.transferFamily = i;
-      indices.isTransferFamilySet = true;
-    }
-
-    // Check for present support
-    VkBool32 presentSupport = VK_FALSE;
-    vkGetPhysicalDeviceSurfaceSupportKHR(device, i, surface, &presentSupport);
-    if (presentSupport)
-    {
-      indices.presentationFamily = i;
-      indices.isPresentFamilySet = true;
-    }
-
-    // If we have both, we can break early
-    if (indices.isGraphicsFamilySet && indices.isPresentFamilySet && indices.isTransferFamilySet)
-    {
-      break;
+      printf("Extension %s not found \n", deviceExtensions[i]);
+      free(availableExtensions);
+      return false;
     }
   }
-
-  free(queueFamilies);
-  return indices;
-}
-
-void createLogicalDevice(App *pApp)
-{
-  QueueFamilyIndices indices = pApp->QueueFamilyIndices;
-
-  VkPhysicalDeviceFeatures deviceFeatures;
-  vkGetPhysicalDeviceFeatures(pApp->physicalDevice, &deviceFeatures);
-
-  // Queue priority
-  const float queuePriority = 1.0f;
-
-  // Create queue info
-  VkDeviceQueueCreateInfo queueCreateInfos[3];
-  uint32_t queueCreateInfoCount = 0;
-
-  if (indices.graphicsFamily == indices.presentationFamily && indices.graphicsFamily == indices.transferFamily)
-  {
-    // Single queue family handles both graphics, presentation, and transfer
-    VkDeviceQueueCreateInfo queueCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-        .queueFamilyIndex = indices.graphicsFamily,
-        .queueCount = 1,
-        .pQueuePriorities = &queuePriority,
-    };
-    queueCreateInfos[queueCreateInfoCount++] = queueCreateInfo;
-  }
-  else if (indices.graphicsFamily == indices.presentationFamily)
-  {
-    // Separate queue families for transfer only
-    VkDeviceQueueCreateInfo queueCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-        .queueFamilyIndex = indices.graphicsFamily,
-        .queueCount = 1,
-        .pQueuePriorities = &queuePriority,
-    };
-    queueCreateInfos[queueCreateInfoCount++] = queueCreateInfo;
-
-    if (indices.graphicsFamily != indices.transferFamily)
-    {
-      VkDeviceQueueCreateInfo transferQueueCreateInfo = {
-          .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-          .queueFamilyIndex = indices.transferFamily,
-          .queueCount = 1,
-          .pQueuePriorities = &queuePriority,
-      };
-      queueCreateInfos[queueCreateInfoCount++] = transferQueueCreateInfo;
-    }
-  }
-  else
-  {
-    // Separate queue families for graphics and presentation and optionally transfer
-    VkDeviceQueueCreateInfo graphicsQueueCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-        .queueFamilyIndex = indices.graphicsFamily,
-        .queueCount = 1,
-        .pQueuePriorities = &queuePriority,
-    };
-    queueCreateInfos[queueCreateInfoCount++] = graphicsQueueCreateInfo;
-
-    VkDeviceQueueCreateInfo presentQueueCreateInfo = {
-        .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-        .queueFamilyIndex = indices.presentationFamily,
-        .queueCount = 1,
-        .pQueuePriorities = &queuePriority,
-    };
-    queueCreateInfos[queueCreateInfoCount++] = presentQueueCreateInfo;
-
-    if (indices.graphicsFamily != indices.transferFamily && indices.presentationFamily != indices.transferFamily)
-    {
-      VkDeviceQueueCreateInfo transferQueueCreateInfo = {
-          .sType = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
-          .queueFamilyIndex = indices.transferFamily,
-          .queueCount = 1,
-          .pQueuePriorities = &queuePriority,
-      };
-      queueCreateInfos[queueCreateInfoCount++] = transferQueueCreateInfo;
-    }
-  }
-
-  VkDeviceCreateInfo createInfo = {
-      .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-      .pQueueCreateInfos = queueCreateInfos,
-      .queueCreateInfoCount = queueCreateInfoCount,
-      .pEnabledFeatures = &deviceFeatures,
-      .enabledExtensionCount = deviceExtensionCount,
-      .ppEnabledExtensionNames = deviceExtensions};
-
-  if (enableValidationLayers)
-  {
-    createInfo.enabledLayerCount = validationLayerCount;
-    createInfo.ppEnabledLayerNames = validationLayers;
-  }
-  else
-  {
-    createInfo.enabledLayerCount = 0;
-  }
-
-  if (vkCreateDevice(pApp->physicalDevice, &createInfo, NULL, &pApp->device) != VK_SUCCESS)
-  {
-    printf("failed to create logical device! \n");
-    abort();
-  }
-  printf("logical device created \n");
-
-  // Retrieve graphics queue
-  vkGetDeviceQueue(pApp->device, indices.graphicsFamily, 0, &pApp->graphicsQueue);
-
-  // Retrieve presentation queue (reuse graphics queue if families are identical)
-  if (indices.graphicsFamily == indices.presentationFamily)
-  {
-    pApp->presentationQueue = pApp->graphicsQueue; // Reuse
-    printf("reused graphics queue \n");
-  }
-  else
-  {
-    printf("didnt reuse graphics queue \n");
-    vkGetDeviceQueue(pApp->device, indices.presentationFamily, 0, &pApp->presentationQueue);
-  }
-  // Added
-  vkGetDeviceQueue(pApp->device, indices.transferFamily, 0, &pApp->transferQueue);
-}
-
-void setupDebugMessenger(App *pApp)
-{
-  if (!enableValidationLayers)
-    return;
-
-  VkDebugUtilsMessengerCreateInfoEXT createInfo = {
-      .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
-      .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT,
-      .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
-      .pfnUserCallback = debugCallback,
-      .pUserData = NULL};
-  if (CreateDebugUtilsMessengerEXT(pApp->instance, &createInfo, NULL, &pApp->debugMessanger) != VK_SUCCESS)
-  {
-    printf("Failed to set up debug messenger");
-  }
-}
-
-void pickPhysicalDevice(App *pApp)
-{
-  uint32_t deviceCount = 0;
-  vkEnumeratePhysicalDevices(pApp->instance, &deviceCount, NULL);
-
-  if (deviceCount == 0)
-  {
-    printf("Failed to find a gpu with Vulkan support");
-    abort();
-  }
-  VkPhysicalDevice devices[deviceCount];
-  vkEnumeratePhysicalDevices(pApp->instance, &deviceCount, devices);
-
-  VkPhysicalDevice device;
-  uint32_t deviceScore = 0;
-  for (uint32_t i = 0; i < deviceCount; i++)
-  {
-    uint32_t score = rateDeviceSuitability(devices[i], pApp->surface);
-    if (score > deviceScore)
-    {
-      deviceScore = score;
-      device = devices[i];
-    }
-  }
-
-  if (device == NULL)
-  {
-    printf("failed to find a suitable GPU");
-  }
-  pApp->physicalDevice = device;
-  printf("Gpu selected. \n");
-
-  QueueFamilyIndices indices = findQueueFamilies(device, pApp->surface);
-  pApp->QueueFamilyIndices = indices;
+  printf("All extensions found \n");
+  free(availableExtensions);
+  return true;
 }

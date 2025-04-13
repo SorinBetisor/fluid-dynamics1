@@ -34,6 +34,13 @@ else()
 endif()
 
 # Find Vulkan package
+# Add Homebrew Vulkan paths for macOS
+if(APPLE)
+    set(VULKAN_INCLUDE_DIR "/opt/homebrew/include" CACHE PATH "Path to Vulkan include directory")
+    set(VULKAN_LIBRARY "/opt/homebrew/lib/libvulkan.dylib" CACHE FILEPATH "Path to Vulkan library")
+    set(ENV{VULKAN_SDK} "/opt/homebrew")
+endif()
+
 find_package(Vulkan REQUIRED)
 if (Vulkan_FOUND)
     include_directories(${Vulkan_INCLUDE_DIRS})

@@ -74,6 +74,8 @@ typedef struct Vertex
 
 typedef struct App
 {
+    bool useValidationLayers;
+    
     SDL_Window *window;
     VkInstance instance;
     VkDebugUtilsMessengerEXT debugMessanger;
@@ -96,30 +98,20 @@ typedef struct App
     VkFramebuffer *swapchainFramebuffers;
     VkCommandPool commandPool;
     VkCommandPool transferCommandPool;
-    // VkCommandBuffer commandBuffer;
     VkCommandBuffer *commandBuffers;
-    // VkSemaphore imageAvailableSemaphore;
-    // VkSemaphore renderFinishedSemaphore;
-    // VkFence inFlightFence;
-
     VkSemaphore *imageAvailableSemaphores;
     VkSemaphore *renderFinishedSemaphores;
     VkFence *inFlightFences;
-
     bool framebufferResized;
-
     uint32_t currentFrame;
-
     Vertex *vertices;
     uint32_t verticesCount;
-
     VkBuffer vertexBuffer;
     VkDeviceMemory vertexBufferMemory;
-
     VkBuffer indexBuffer;
     VkDeviceMemory indexBufferMemory;
     uint16_t *indices;
-    uint32_t indicesCount;   
+    uint32_t indicesCount;
 } App;
 
 /* ----------------------------------------------------

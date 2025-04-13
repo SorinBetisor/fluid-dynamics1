@@ -38,5 +38,9 @@ echo "Compiling shaders..."
 cd ..
 ./shaderCompile.sh
 
+echo "Copying shaders to build directory..."
+mkdir -p build/shaders
+cp shaders/*.spv build/shaders/
+
 echo "Build successful!"
 
