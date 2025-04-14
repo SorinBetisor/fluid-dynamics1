@@ -67,6 +67,7 @@ void mainLoop(App *pApp) {
                  event.window.data2); // new height
         }
       }
+    }
 
       // Update simulation
       VkCommandBuffer cmdBuf =
@@ -81,10 +82,9 @@ void mainLoop(App *pApp) {
 
       // For simplicity, always draw after handling an event:
       drawFrame(pApp);
-    }
 
     // Delay to prevent high CPU usage
-    SDL_Delay(16); // ~60 FPS
+    // SDL_Delay(16); // ~60 FPS
   }
 
   vkDeviceWaitIdle(pApp->device);
