@@ -1,0 +1,73 @@
+#version 450
+
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+// Input/output buffers
+layout(std430, binding = 0) buffer InputBuffer {
+    float input_data[];
+};
+
+layout(std430, binding = 1) buffer OutputBuffer {
+    float output_data[];
+};
+
+layout(std430, binding = 2) buffer GridBuffer {
+    float grid_data[];  // 1.0 for solid, 0.0 for fluid
+};
+
+// Uniforms
+layout(push_constant) uniform PushConstants {
+    float dx;
+    float dy;
+    int width;
+    int height;
+    float f_factor;  // dx^2 * dy^2
+} constants;
+
+void main() {
+    // Get global position
+    uint gx = gl_GlobalInvocationID.x;
+    uint gy = gl_GlobalInvocationID.y;
+    
+    // Skip out-of-bounds work items
+    if (gx >= constants.width || gy >= constants.height) {
+        return;
+    }
+    
+    // Calculate flat index
+    uint idx = gy * constants.width + gx;
+    
+    // Check if this is a solid cell
+    if (grid_data[idx] > 0.5) {
+        // This is a solid cell - keep value unchanged
+        output_data[idx] = input_data[idx];
+        return;
+    }
+    
+    // Handle boundary conditions
+    if (gx == 0 || gx == constants.width - 1 || gy == 0 || gy == constants.height - 1) {
+        output_data[idx] = input_data[idx];
+        return;
+    }
+    
+    // Compute indices for neighbors
+    uint left = gy * constants.width + (gx - 1);
+    uint right = gy * constants.width + (gx + 1);
+    uint bottom = (gy - 1) * constants.width + gx;
+    uint top = (gy + 1) * constants.width + gx;
+    
+    // Get values from neighbors
+    float u_left = input_data[left];
+    float u_right = input_data[right];
+    float u_bottom = input_data[bottom];
+    float u_top = input_data[top];
+    
+    // Compute new value
+    float dx2 = constants.dx * constants.dx;
+    float dy2 = constants.dy * constants.dy;
+    float f = input_data[idx]; // Source term
+    
+    float result = (dy2 * (u_left + u_right) + dx2 * (u_bottom + u_top) - constants.f_factor * f) / (2.0 * (dx2 + dy2));
+    
+    output_data[idx] = result;
+} 
