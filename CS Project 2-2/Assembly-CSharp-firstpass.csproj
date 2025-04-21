@@ -1,0 +1,237 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <LangVersion>9.0</LangVersion>
+    <_TargetFrameworkDirectories>non_empty_path_generated_by_unity.rider.package</_TargetFrameworkDirectories>
+    <_FullFrameworkReferenceAssemblyPaths>non_empty_path_generated_by_unity.rider.package</_FullFrameworkReferenceAssemblyPaths>
+    <DisableHandlePackageFileConflicts>true</DisableHandlePackageFileConflicts>
+  </PropertyGroup>
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProductVersion>10.0.20506</ProductVersion>
+    <SchemaVersion>2.0</SchemaVersion>
+    <RootNamespace></RootNamespace>
+    <ProjectGuid>{2aa6f6be-de3b-c8bd-a81f-81d787836435}</ProjectGuid>
+    <ProjectTypeGuids>{E097FAD1-6243-4DAD-9C02-E9B9EFC3FFC1};{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}</ProjectTypeGuids>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <AssemblyName>Assembly-CSharp-firstpass</AssemblyName>
+    <TargetFrameworkVersion>v4.7.1</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <BaseDirectory>.</BaseDirectory>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>Temp\Bin\Debug\Unity.Rider.Editor\</OutputPath>
+    <DefineConstants>UNITY_EDITOR</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <NoWarn>0169,0649</NoWarn>
+    <AllowUnsafeBlocks>False</AllowUnsafeBlocks>
+    <TreatWarningsAsErrors>False</TreatWarningsAsErrors>
+  </PropertyGroup>
+  <PropertyGroup>
+    <NoConfig>true</NoConfig>
+    <NoStdLib>true</NoStdLib>
+    <AddAdditionalExplicitAssemblyReferences>false</AddAdditionalExplicitAssemblyReferences>
+    <ImplicitlyExpandNETStandardFacades>false</ImplicitlyExpandNETStandardFacades>
+    <ImplicitlyExpandDesignTimeFacades>false</ImplicitlyExpandDesignTimeFacades>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Triangle Darken.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Rect Multiplicative.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Core\Line 3D Core.cginc" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Sphere Multiplicative.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Regular Polygon Multiplicative.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Regular Polygon Transparent.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Texture Screen.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Rect ColorDodge.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Cuboid Screen.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Line 2D Subtractive.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Rect Lighten.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Polygon LinearBurn.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Rect Transparent.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Triangle ColorBurn.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Cone Lighten.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Quad Multiplicative.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Line 3D Darken.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Sphere LinearBurn.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Polyline 2D Additive.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Polygon ColorDodge.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\DashUtils.cginc" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Polygon Additive.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Cuboid ColorDodge.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Line 2D ColorBurn.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Torus Transparent.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Triangle Transparent.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Line 3D Opaque.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\FillUtils.cginc" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Torus Screen.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Quad LinearBurn.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Polyline 2D Subtractive.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Disc ColorDodge.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Triangle Multiplicative.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Torus LinearBurn.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Polyline 2D Multiplicative.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Cuboid LinearBurn.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Polygon Lighten.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Sphere Darken.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Texture Multiplicative.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Disc LinearBurn.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Cuboid Lighten.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Shapes.cginc" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Disc Darken.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Texture Opaque.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Polyline 2D ColorBurn.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Polyline 2D Screen.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Rect Darken.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Line 3D Screen.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Quad Darken.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Line 3D Multiplicative.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Cuboid Opaque.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Regular Polygon Opaque.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Core\Disc Core.cginc" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Rect Screen.shader" />
+    <None Include="Assets\Plugins\Shapes\package.json" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Core\Sphere Core.cginc" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Rect LinearBurn.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Sphere Screen.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Sphere ColorBurn.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Polygon ColorBurn.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Disc Subtractive.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Polyline 2D ColorDodge.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Quad Screen.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Cuboid Additive.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Core\Regular Polygon Core.cginc" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Polyline 2D Lighten.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Core\Polyline 2D Core.cginc" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Quad Opaque.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Polyline 2D LinearBurn.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Disc Transparent.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Core\Rect Core.cginc" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Core\Triangle Core.cginc" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Sphere Lighten.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Line 2D Additive.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Cuboid Subtractive.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Shapes Math.cginc" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Regular Polygon ColorDodge.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Line 2D Opaque.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Line 2D Transparent.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Regular Polygon LinearBurn.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Polygon Darken.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Triangle Screen.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Disc Lighten.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Line 2D ColorDodge.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Quad ColorDodge.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Core\Cone Core.cginc" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Polygon Opaque.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Cuboid Multiplicative.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Cone ColorBurn.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Sphere Subtractive.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Polygon Subtractive.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Texture Additive.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Line 3D Transparent.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Line 2D Lighten.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Quad Subtractive.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Polyline 2D Transparent.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Quad Transparent.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Regular Polygon Darken.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Core\Torus Core.cginc" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Disc Multiplicative.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Cone Subtractive.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Disc Opaque.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Cone Multiplicative.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Cone Screen.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Regular Polygon ColorBurn.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Line 2D LinearBurn.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Core\Line 2D Core.cginc" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Core\Quad Core.cginc" />
+    <None Include="Assets\Plugins\Shapes\Textures\Inconsolata\OFL.txt" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Disc Additive.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Disc Screen.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Torus Multiplicative.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Line 2D Multiplicative.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Cuboid Transparent.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Line 3D ColorDodge.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Texture Transparent.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Quad ColorBurn.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Core\Texture Core.cginc" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Cone Transparent.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Torus Lighten.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Torus ColorBurn.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Cone LinearBurn.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Polygon Multiplicative.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Texture Subtractive.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Texture ColorBurn.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Cone Opaque.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Regular Polygon Subtractive.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Shapes Config.cginc" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Torus Subtractive.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Triangle Subtractive.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Triangle Additive.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Polygon Transparent.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Rect Subtractive.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Cone Darken.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Cone ColorDodge.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Rect ColorBurn.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Line 2D Screen.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Cone Additive.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Cuboid ColorBurn.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Regular Polygon Lighten.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Line 3D Lighten.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Disc ColorBurn.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Regular Polygon Additive.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Rect Opaque.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Rect Additive.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Line 2D Darken.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Cuboid Darken.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Texture ColorDodge.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Core\Cuboid Core.cginc" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Line 3D Subtractive.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Torus Darken.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Line 3D Additive.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Core\Polygon Core.cginc" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Torus Opaque.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Torus ColorDodge.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Line 3D ColorBurn.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Texture LinearBurn.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Torus Additive.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Triangle LinearBurn.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Polygon Screen.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Polyline 2D Darken.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Quad Lighten.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Texture Lighten.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Triangle Opaque.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Triangle ColorDodge.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Sphere Additive.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Polyline 2D Opaque.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Regular Polygon Screen.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Line 3D LinearBurn.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Texture Darken.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Triangle Lighten.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Sphere ColorDodge.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Sphere Transparent.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Sphere Opaque.shader" />
+    <None Include="Assets\Plugins\Shapes\Shaders\Generated Shaders\Resources\Quad Additive.shader" />
+    <Reference Include="UnityEngine">
+      <HintPath>C:\Users\colon\Downloads\Unity\6000.0.42f1\Editor\Data\Managed\UnityEngine\UnityEngine.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>C:\Users\colon\Downloads\Unity\6000.0.42f1\Editor\Data\Managed\UnityEngine\UnityEngine.CoreModule.dll</HintPath>
+    </Reference>
+    <Reference Include="UnityEditor">
+      <HintPath>C:\Users\colon\Downloads\Unity\6000.0.42f1\Editor\Data\Managed\UnityEngine\UnityEditor.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
