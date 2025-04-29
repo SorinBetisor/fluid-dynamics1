@@ -478,13 +478,16 @@ int main(int argc, char *argv[])
             printvtk(v, "y-velocity");
             printvtk(obj, "object");
             // printvtk(p, "pressure");
-            char fname_u[128], fname_v[128], fname_w[128];
+            char fname_u[128], fname_v[128], fname_w[128], fname_obj[128];
             snprintf(fname_u, sizeof(fname_u), "ai_data/u_t%d.csv", t);
             snprintf(fname_v, sizeof(fname_v), "ai_data/v_t%d.csv", t);
             snprintf(fname_w, sizeof(fname_w), "ai_data/w_t%d.csv", t);
+            snprintf(fname_obj, sizeof(fname_obj), "ai_data/obj_t%d.csv", t);
             save_matrix_csv(u, fname_u);
             save_matrix_csv(v, fname_v);
             save_matrix_csv(w, fname_w);
+            save_matrix_csv(obj, fname_obj);
+
         }
 
         // Free memory
