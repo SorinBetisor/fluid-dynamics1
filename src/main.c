@@ -1,6 +1,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#define DISABLE_GPU
+#define DISABLE_VULKAN
+
+
 #include <math.h>
 #include <time.h>
 #ifndef DISABLE_OPENMP
@@ -13,6 +18,25 @@
 #include "fluiddyn.h"
 #include "gl_solver.h"  // Include GPU solver header
 #include "vulkan_solver.h" // Include Vulkan solver header
+
+#include <stdio.h>
+#include <stdlib.h>
+
+void save_matrix_csv(mtrx A, const char* filename) {
+    FILE* f = fopen(filename, "w");
+    if (!f) {
+        printf("Error opening file %s\n", filename);
+        return;
+    }
+    for (int i = 0; i < A.m; i++) {
+        for (int j = 0; j < A.n; j++) {
+            fprintf(f, "%.6f", A.M[i][j]);
+            if (j < A.n - 1) fprintf(f, ",");
+        }
+        fprintf(f, "\n");
+    }
+    fclose(f);
+}
 
 // Timing functions for when OpenMP is not available
 #ifdef DISABLE_OPENMP
@@ -148,7 +172,7 @@ int main(int argc, char *argv[])
             grid[i][j].is_solid = 0;  // Initialize all cells as fluid
         }
     }
-
+    system("mkdir -p ai_data");
     // Define circular object
     #pragma omp parallel for private(j) if(use_omp)
     for (i = 0; i < nx; i++) {
@@ -369,23 +393,15 @@ int main(int argc, char *argv[])
         
         if (poisson_type == 1)
         {
-            if (use_gpu) {
-                psi = poisson_gpu_with_object(w, dx, dy, poisson_max_it, poisson_tol, grid);
-            } else if (use_vulkan) {
-                psi = poisson_vulkan_with_object(w, dx, dy, poisson_max_it, poisson_tol, grid);
-            } else {
-                psi = poisson_with_object(w, dx, dy, poisson_max_it, poisson_tol, grid);
-            }
+            
+            psi = poisson_with_object(w, dx, dy, poisson_max_it, poisson_tol, grid);
+            
         }
         else if (poisson_type == 2)
         {
-            if (use_gpu) {
-                psi = poisson_SOR_gpu_with_object(w, dx, dy, poisson_max_it, poisson_tol, beta, grid);
-            } else if (use_vulkan) {
-                psi = poisson_SOR_vulkan_with_object(w, dx, dy, poisson_max_it, poisson_tol, beta, grid);
-            } else {
-                psi = poisson_SOR_with_object(w, dx, dy, poisson_max_it, poisson_tol, beta, grid);
-            }
+            
+            psi = poisson_SOR_with_object(w, dx, dy, poisson_max_it, poisson_tol, beta, grid);
+        
         }
         else
         {
@@ -462,6 +478,13 @@ int main(int argc, char *argv[])
             printvtk(v, "y-velocity");
             printvtk(obj, "object");
             // printvtk(p, "pressure");
+            char fname_u[128], fname_v[128], fname_w[128];
+            snprintf(fname_u, sizeof(fname_u), "ai_data/u_t%d.csv", t);
+            snprintf(fname_v, sizeof(fname_v), "ai_data/v_t%d.csv", t);
+            snprintf(fname_w, sizeof(fname_w), "ai_data/w_t%d.csv", t);
+            save_matrix_csv(u, fname_u);
+            save_matrix_csv(v, fname_v);
+            save_matrix_csv(w, fname_w);
         }
 
         // Free memory
@@ -487,12 +510,7 @@ int main(int argc, char *argv[])
     printf("Average time per iteration: %.3f seconds\n", total_time / (it_max + 1));
     
     // Clean up GPU resources if used
-    if (use_gpu) {
-        cleanup_gl_solver();
-    } else if (use_vulkan) {
-        cleanup_vulkan_solver();
-    }
-    
+  
     // Free memory
     u.M = freem(u);
     v.M = freem(v);
