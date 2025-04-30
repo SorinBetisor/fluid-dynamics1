@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\Admin\Documents\GitHub\fluid-dynamics1\build_win\CMakeFiles\3c5e75dafe466fbb12ead7cee0ab82aa\generate.stamp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{F96E4410-C123-3455-B5ED-25A844627D0B}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

@@ -1,0 +1,257 @@
+
+---
+events:
+  -
+    kind: "message-v1"
+    backtrace:
+      - "D:/CMake/share/cmake-3.31/Modules/CMakeDetermineSystem.cmake:205 (message)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      The system is: Windows - 10.0.19045 - AMD64
+  -
+    kind: "message-v1"
+    backtrace:
+      - "D:/CMake/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:17 (message)"
+      - "D:/CMake/share/cmake-3.31/Modules/CMakeDetermineCompilerId.cmake:64 (__determine_compiler_id_test)"
+      - "D:/CMake/share/cmake-3.31/Modules/CMakeDetermineCCompiler.cmake:123 (CMAKE_DETERMINE_COMPILER_ID)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      Compiling the C compiler identification source file "CMakeCCompilerId.c" succeeded.
+      Compiler:  
+      Build flags: 
+      Id flags:  
+      
+      The output was:
+      0
+      MSBuild version 17.12.12+1cce77968 for .NET Framework
+      Build started 30.04.2025 16:39:41.
+      
+      Project "C:\\Users\\Admin\\Documents\\GitHub\\fluid-dynamics1\\build_win\\CMakeFiles\\3.31.5\\CompilerIdC\\CompilerIdC.vcxproj" on node 1 (default targets).
+      PrepareForBuild:
+        Creating directory "Debug\\".
+        Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+        Creating directory "Debug\\CompilerIdC.tlog\\".
+      InitializeBuildStatus:
+        Creating "Debug\\CompilerIdC.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+        Touching "Debug\\CompilerIdC.tlog\\unsuccessfulbuild".
+      ClCompile:
+        E:\\VisualStudioTools\\VC\\Tools\\MSVC\\14.42.34433\\bin\\HostX64\\x64\\CL.exe /c /nologo /W0 /WX- /diagnostics:column /Od /D _MBCS /Gm- /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"Debug\\\\" /Fd"Debug\\vc143.pdb" /external:W0 /Gd /TC /FC /errorReport:queue CMakeCCompilerId.c
+        CMakeCCompilerId.c
+      Link:
+        E:\\VisualStudioTools\\VC\\Tools\\MSVC\\14.42.34433\\bin\\HostX64\\x64\\link.exe /ERRORREPORT:QUEUE /OUT:".\\CompilerIdC.exe" /INCREMENTAL:NO /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /PDB:".\\CompilerIdC.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:".\\CompilerIdC.lib" /MACHINE:X64 Debug\\CMakeCCompilerId.obj
+        CompilerIdC.vcxproj -> C:\\Users\\Admin\\Documents\\GitHub\\fluid-dynamics1\\build_win\\CMakeFiles\\3.31.5\\CompilerIdC\\CompilerIdC.exe
+      PostBuildEvent:
+        for %%i in (cl.exe) do @echo CMAKE_C_COMPILER=%%~$PATH:i
+        :VCEnd
+        CMAKE_C_COMPILER=E:\\VisualStudioTools\\VC\\Tools\\MSVC\\14.42.34433\\bin\\Hostx64\\x64\\cl.exe
+      FinalizeBuildStatus:
+        Deleting file "Debug\\CompilerIdC.tlog\\unsuccessfulbuild".
+        Touching "Debug\\CompilerIdC.tlog\\CompilerIdC.lastbuildstate".
+      Done Building Project "C:\\Users\\Admin\\Documents\\GitHub\\fluid-dynamics1\\build_win\\CMakeFiles\\3.31.5\\CompilerIdC\\CompilerIdC.vcxproj" (default targets).
+      
+      Build succeeded.
+          0 Warning(s)
+          0 Error(s)
+      
+      Time Elapsed 00:00:00.69
+      
+      
+      Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "CompilerIdC.exe"
+      
+      Compilation of the C compiler identification source "CMakeCCompilerId.c" produced "CompilerIdC.vcxproj"
+      
+      The C compiler identification is MSVC, found in:
+        C:/Users/Admin/Documents/GitHub/fluid-dynamics1/build_win/CMakeFiles/3.31.5/CompilerIdC/CompilerIdC.exe
+      
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "D:/CMake/share/cmake-3.31/Modules/CMakeDetermineCompilerABI.cmake:74 (try_compile)"
+      - "D:/CMake/share/cmake-3.31/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:2 (project)"
+    checks:
+      - "Detecting C compiler ABI info"
+    directories:
+      source: "C:/Users/Admin/Documents/GitHub/fluid-dynamics1/build_win/CMakeFiles/CMakeScratch/TryCompile-20sfoc"
+      binary: "C:/Users/Admin/Documents/GitHub/fluid-dynamics1/build_win/CMakeFiles/CMakeScratch/TryCompile-20sfoc"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS /W3"
+      CMAKE_C_FLAGS_DEBUG: "/MDd /Zi /Ob0 /Od /RTC1"
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+    buildResult:
+      variable: "CMAKE_C_ABI_COMPILED"
+      cached: true
+      stdout: |
+        Change Dir: 'C:/Users/Admin/Documents/GitHub/fluid-dynamics1/build_win/CMakeFiles/CMakeScratch/TryCompile-20sfoc'
+        
+        Run Build Command(s): E:/VisualStudioTools/MSBuild/Current/Bin/amd64/MSBuild.exe cmTC_e7312.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        MSBuild version 17.12.12+1cce77968 for .NET Framework
+        Build started 30.04.2025 16:39:42.
+        
+        Project "C:\\Users\\Admin\\Documents\\GitHub\\fluid-dynamics1\\build_win\\CMakeFiles\\CMakeScratch\\TryCompile-20sfoc\\cmTC_e7312.vcxproj" on node 1 (default targets).
+        PrepareForBuild:
+          Creating directory "cmTC_e7312.dir\\Debug\\".
+          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+          Creating directory "C:\\Users\\Admin\\Documents\\GitHub\\fluid-dynamics1\\build_win\\CMakeFiles\\CMakeScratch\\TryCompile-20sfoc\\Debug\\".
+          Creating directory "cmTC_e7312.dir\\Debug\\cmTC_e7312.tlog\\".
+        InitializeBuildStatus:
+          Creating "cmTC_e7312.dir\\Debug\\cmTC_e7312.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_e7312.dir\\Debug\\cmTC_e7312.tlog\\unsuccessfulbuild".
+        ClCompile:
+          E:\\VisualStudioTools\\VC\\Tools\\MSVC\\14.42.34433\\bin\\HostX64\\x64\\CL.exe /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_e7312.dir\\Debug\\\\" /Fd"cmTC_e7312.dir\\Debug\\vc143.pdb" /external:W3 /Gd /TC /errorReport:queue "D:\\CMake\\share\\cmake-3.31\\Modules\\CMakeCCompilerABI.c"
+          Microsoft (R) C/C++ Optimizing Compiler Version 19.42.34436 for x64
+          Copyright (C) Microsoft Corporation.  All rights reserved.
+          cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /Fo"cmTC_e7312.dir\\Debug\\\\" /Fd"cmTC_e7312.dir\\Debug\\vc143.pdb" /external:W3 /Gd /TC /errorReport:queue "D:\\CMake\\share\\cmake-3.31\\Modules\\CMakeCCompilerABI.c"
+          CMakeCCompilerABI.c
+        Link:
+          E:\\VisualStudioTools\\VC\\Tools\\MSVC\\14.42.34433\\bin\\HostX64\\x64\\link.exe /ERRORREPORT:QUEUE /OUT:"C:\\Users\\Admin\\Documents\\GitHub\\fluid-dynamics1\\build_win\\CMakeFiles\\CMakeScratch\\TryCompile-20sfoc\\Debug\\cmTC_e7312.exe" /INCREMENTAL /ILK:"cmTC_e7312.dir\\Debug\\cmTC_e7312.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/Admin/Documents/GitHub/fluid-dynamics1/build_win/CMakeFiles/CMakeScratch/TryCompile-20sfoc/Debug/cmTC_e7312.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:/Users/Admin/Documents/GitHub/fluid-dynamics1/build_win/CMakeFiles/CMakeScratch/TryCompile-20sfoc/Debug/cmTC_e7312.lib" /MACHINE:X64  /machine:x64 cmTC_e7312.dir\\Debug\\CMakeCCompilerABI.obj
+          cmTC_e7312.vcxproj -> C:\\Users\\Admin\\Documents\\GitHub\\fluid-dynamics1\\build_win\\CMakeFiles\\CMakeScratch\\TryCompile-20sfoc\\Debug\\cmTC_e7312.exe
+        FinalizeBuildStatus:
+          Deleting file "cmTC_e7312.dir\\Debug\\cmTC_e7312.tlog\\unsuccessfulbuild".
+          Touching "cmTC_e7312.dir\\Debug\\cmTC_e7312.tlog\\cmTC_e7312.lastbuildstate".
+        Done Building Project "C:\\Users\\Admin\\Documents\\GitHub\\fluid-dynamics1\\build_win\\CMakeFiles\\CMakeScratch\\TryCompile-20sfoc\\cmTC_e7312.vcxproj" (default targets).
+        
+        Build succeeded.
+            0 Warning(s)
+            0 Error(s)
+        
+        Time Elapsed 00:00:00.72
+        
+      exitCode: 0
+  -
+    kind: "message-v1"
+    backtrace:
+      - "D:/CMake/share/cmake-3.31/Modules/CMakeDetermineCompilerABI.cmake:218 (message)"
+      - "D:/CMake/share/cmake-3.31/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      Parsed C implicit link information:
+        link line regex: [^( *|.*[/\\])(ld[0-9]*(\\.[a-z]+)?|link\\.exe|lld-link(\\.exe)?|CMAKE_LINK_STARTFILE-NOTFOUND|([^/\\]+-)?ld|collect2)[^/\\]*( |$)]
+        linker tool regex: [^[ 	]*(->|")?[ 	]*(([^"]*[/\\])?(ld[0-9]*(\\.[a-z]+)?|link\\.exe|lld-link(\\.exe)?))("|,| |$)]
+        linker tool for 'C': E:/VisualStudioTools/VC/Tools/MSVC/14.42.34433/bin/HostX64/x64/link.exe
+        implicit libs: []
+        implicit objs: []
+        implicit dirs: []
+        implicit fwks: []
+      
+      
+  -
+    kind: "message-v1"
+    backtrace:
+      - "D:/CMake/share/cmake-3.31/Modules/Internal/CMakeDetermineLinkerId.cmake:40 (message)"
+      - "D:/CMake/share/cmake-3.31/Modules/CMakeDetermineCompilerABI.cmake:255 (cmake_determine_linker_id)"
+      - "D:/CMake/share/cmake-3.31/Modules/CMakeTestCCompiler.cmake:26 (CMAKE_DETERMINE_COMPILER_ABI)"
+      - "CMakeLists.txt:2 (project)"
+    message: |
+      Running the C compiler's linker: "E:/VisualStudioTools/VC/Tools/MSVC/14.42.34433/bin/HostX64/x64/link.exe" "-v"
+      Microsoft (R) Incremental Linker Version 14.42.34436.0
+      Copyright (C) Microsoft Corporation.  All rights reserved.
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "D:/CMake/share/cmake-3.31/Modules/FindOpenMP.cmake:252 (try_compile)"
+      - "D:/CMake/share/cmake-3.31/Modules/FindOpenMP.cmake:522 (_OPENMP_GET_FLAGS)"
+      - "CMakeLists.txt:36 (find_package)"
+    description: "Detecting C OpenMP compiler info"
+    directories:
+      source: "C:/Users/Admin/Documents/GitHub/fluid-dynamics1/build_win/CMakeFiles/CMakeScratch/TryCompile-spdp7o"
+      binary: "C:/Users/Admin/Documents/GitHub/fluid-dynamics1/build_win/CMakeFiles/CMakeScratch/TryCompile-spdp7o"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS /W3"
+      CMAKE_C_FLAGS_DEBUG: "/MDd /Zi /Ob0 /Od /RTC1"
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+    buildResult:
+      variable: "OpenMP_COMPILE_RESULT_C_openmp"
+      cached: true
+      stdout: |
+        Change Dir: 'C:/Users/Admin/Documents/GitHub/fluid-dynamics1/build_win/CMakeFiles/CMakeScratch/TryCompile-spdp7o'
+        
+        Run Build Command(s): E:/VisualStudioTools/MSBuild/Current/Bin/amd64/MSBuild.exe cmTC_266ab.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        MSBuild version 17.12.12+1cce77968 for .NET Framework
+        Build started 30.04.2025 16:39:43.
+        
+        Project "C:\\Users\\Admin\\Documents\\GitHub\\fluid-dynamics1\\build_win\\CMakeFiles\\CMakeScratch\\TryCompile-spdp7o\\cmTC_266ab.vcxproj" on node 1 (default targets).
+        PrepareForBuild:
+          Creating directory "cmTC_266ab.dir\\Debug\\".
+          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+          Creating directory "C:\\Users\\Admin\\Documents\\GitHub\\fluid-dynamics1\\build_win\\CMakeFiles\\CMakeScratch\\TryCompile-spdp7o\\Debug\\".
+          Creating directory "cmTC_266ab.dir\\Debug\\cmTC_266ab.tlog\\".
+        InitializeBuildStatus:
+          Creating "cmTC_266ab.dir\\Debug\\cmTC_266ab.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_266ab.dir\\Debug\\cmTC_266ab.tlog\\unsuccessfulbuild".
+        ClCompile:
+          E:\\VisualStudioTools\\VC\\Tools\\MSVC\\14.42.34433\\bin\\HostX64\\x64\\CL.exe /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /openmp /std:c11 /Fo"cmTC_266ab.dir\\Debug\\\\" /Fd"cmTC_266ab.dir\\Debug\\vc143.pdb" /external:W3 /Gd /TC /errorReport:queue "C:\\Users\\Admin\\Documents\\GitHub\\fluid-dynamics1\\build_win\\CMakeFiles\\CMakeScratch\\TryCompile-spdp7o\\OpenMPTryFlag.c"
+          Microsoft (R) C/C++ Optimizing Compiler Version 19.42.34436 for x64
+          Copyright (C) Microsoft Corporation.  All rights reserved.
+          cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /openmp /std:c11 /Fo"cmTC_266ab.dir\\Debug\\\\" /Fd"cmTC_266ab.dir\\Debug\\vc143.pdb" /external:W3 /Gd /TC /errorReport:queue "C:\\Users\\Admin\\Documents\\GitHub\\fluid-dynamics1\\build_win\\CMakeFiles\\CMakeScratch\\TryCompile-spdp7o\\OpenMPTryFlag.c"
+          OpenMPTryFlag.c
+        Link:
+          E:\\VisualStudioTools\\VC\\Tools\\MSVC\\14.42.34433\\bin\\HostX64\\x64\\link.exe /ERRORREPORT:QUEUE /OUT:"C:\\Users\\Admin\\Documents\\GitHub\\fluid-dynamics1\\build_win\\CMakeFiles\\CMakeScratch\\TryCompile-spdp7o\\Debug\\cmTC_266ab.exe" /INCREMENTAL /ILK:"cmTC_266ab.dir\\Debug\\cmTC_266ab.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/Admin/Documents/GitHub/fluid-dynamics1/build_win/CMakeFiles/CMakeScratch/TryCompile-spdp7o/Debug/cmTC_266ab.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:/Users/Admin/Documents/GitHub/fluid-dynamics1/build_win/CMakeFiles/CMakeScratch/TryCompile-spdp7o/Debug/cmTC_266ab.lib" /MACHINE:X64  /machine:x64 cmTC_266ab.dir\\Debug\\OpenMPTryFlag.obj
+          cmTC_266ab.vcxproj -> C:\\Users\\Admin\\Documents\\GitHub\\fluid-dynamics1\\build_win\\CMakeFiles\\CMakeScratch\\TryCompile-spdp7o\\Debug\\cmTC_266ab.exe
+        FinalizeBuildStatus:
+          Deleting file "cmTC_266ab.dir\\Debug\\cmTC_266ab.tlog\\unsuccessfulbuild".
+          Touching "cmTC_266ab.dir\\Debug\\cmTC_266ab.tlog\\cmTC_266ab.lastbuildstate".
+        Done Building Project "C:\\Users\\Admin\\Documents\\GitHub\\fluid-dynamics1\\build_win\\CMakeFiles\\CMakeScratch\\TryCompile-spdp7o\\cmTC_266ab.vcxproj" (default targets).
+        
+        Build succeeded.
+            0 Warning(s)
+            0 Error(s)
+        
+        Time Elapsed 00:00:00.66
+        
+      exitCode: 0
+  -
+    kind: "try_compile-v1"
+    backtrace:
+      - "D:/CMake/share/cmake-3.31/Modules/FindOpenMP.cmake:456 (try_compile)"
+      - "D:/CMake/share/cmake-3.31/Modules/FindOpenMP.cmake:596 (_OPENMP_GET_SPEC_DATE)"
+      - "CMakeLists.txt:36 (find_package)"
+    description: "Detecting C OpenMP version"
+    directories:
+      source: "C:/Users/Admin/Documents/GitHub/fluid-dynamics1/build_win/CMakeFiles/CMakeScratch/TryCompile-0z2htl"
+      binary: "C:/Users/Admin/Documents/GitHub/fluid-dynamics1/build_win/CMakeFiles/CMakeScratch/TryCompile-0z2htl"
+    cmakeVariables:
+      CMAKE_C_FLAGS: "/DWIN32 /D_WINDOWS /W3"
+      CMAKE_C_FLAGS_DEBUG: "/MDd /Zi /Ob0 /Od /RTC1"
+      CMAKE_EXE_LINKER_FLAGS: "/machine:x64"
+    buildResult:
+      variable: "OpenMP_SPECTEST_C_"
+      cached: true
+      stdout: |
+        Change Dir: 'C:/Users/Admin/Documents/GitHub/fluid-dynamics1/build_win/CMakeFiles/CMakeScratch/TryCompile-0z2htl'
+        
+        Run Build Command(s): E:/VisualStudioTools/MSBuild/Current/Bin/amd64/MSBuild.exe cmTC_5dc45.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:VisualStudioVersion=17.0 /v:n
+        MSBuild version 17.12.12+1cce77968 for .NET Framework
+        Build started 30.04.2025 16:39:44.
+        
+        Project "C:\\Users\\Admin\\Documents\\GitHub\\fluid-dynamics1\\build_win\\CMakeFiles\\CMakeScratch\\TryCompile-0z2htl\\cmTC_5dc45.vcxproj" on node 1 (default targets).
+        PrepareForBuild:
+          Creating directory "cmTC_5dc45.dir\\Debug\\".
+          Structured output is enabled. The formatting of compiler diagnostics will reflect the error hierarchy. See https://aka.ms/cpp/structured-output for more details.
+          Creating directory "C:\\Users\\Admin\\Documents\\GitHub\\fluid-dynamics1\\build_win\\CMakeFiles\\CMakeScratch\\TryCompile-0z2htl\\Debug\\".
+          Creating directory "cmTC_5dc45.dir\\Debug\\cmTC_5dc45.tlog\\".
+        InitializeBuildStatus:
+          Creating "cmTC_5dc45.dir\\Debug\\cmTC_5dc45.tlog\\unsuccessfulbuild" because "AlwaysCreate" was specified.
+          Touching "cmTC_5dc45.dir\\Debug\\cmTC_5dc45.tlog\\unsuccessfulbuild".
+        ClCompile:
+          E:\\VisualStudioTools\\VC\\Tools\\MSVC\\14.42.34433\\bin\\HostX64\\x64\\CL.exe /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /openmp /std:c11 /Fo"cmTC_5dc45.dir\\Debug\\\\" /Fd"cmTC_5dc45.dir\\Debug\\vc143.pdb" /external:W3 /Gd /TC /errorReport:queue "C:\\Users\\Admin\\Documents\\GitHub\\fluid-dynamics1\\build_win\\CMakeFiles\\CMakeScratch\\TryCompile-0z2htl\\OpenMPCheckVersion.c"
+          Microsoft (R) C/C++ Optimizing Compiler Version 19.42.34436 for x64
+          Copyright (C) Microsoft Corporation.  All rights reserved.
+          cl /c /Zi /W3 /WX- /diagnostics:column /Od /Ob0 /D _MBCS /D WIN32 /D _WINDOWS /D "CMAKE_INTDIR=\\"Debug\\"" /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Zc:inline /openmp /std:c11 /Fo"cmTC_5dc45.dir\\Debug\\\\" /Fd"cmTC_5dc45.dir\\Debug\\vc143.pdb" /external:W3 /Gd /TC /errorReport:queue "C:\\Users\\Admin\\Documents\\GitHub\\fluid-dynamics1\\build_win\\CMakeFiles\\CMakeScratch\\TryCompile-0z2htl\\OpenMPCheckVersion.c"
+          OpenMPCheckVersion.c
+        Link:
+          E:\\VisualStudioTools\\VC\\Tools\\MSVC\\14.42.34433\\bin\\HostX64\\x64\\link.exe /ERRORREPORT:QUEUE /OUT:"C:\\Users\\Admin\\Documents\\GitHub\\fluid-dynamics1\\build_win\\CMakeFiles\\CMakeScratch\\TryCompile-0z2htl\\Debug\\cmTC_5dc45.exe" /INCREMENTAL /ILK:"cmTC_5dc45.dir\\Debug\\cmTC_5dc45.ilk" /NOLOGO kernel32.lib user32.lib gdi32.lib winspool.lib shell32.lib ole32.lib oleaut32.lib uuid.lib comdlg32.lib advapi32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"C:/Users/Admin/Documents/GitHub/fluid-dynamics1/build_win/CMakeFiles/CMakeScratch/TryCompile-0z2htl/Debug/cmTC_5dc45.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"C:/Users/Admin/Documents/GitHub/fluid-dynamics1/build_win/CMakeFiles/CMakeScratch/TryCompile-0z2htl/Debug/cmTC_5dc45.lib" /MACHINE:X64  /machine:x64 cmTC_5dc45.dir\\Debug\\OpenMPCheckVersion.obj
+          cmTC_5dc45.vcxproj -> C:\\Users\\Admin\\Documents\\GitHub\\fluid-dynamics1\\build_win\\CMakeFiles\\CMakeScratch\\TryCompile-0z2htl\\Debug\\cmTC_5dc45.exe
+        FinalizeBuildStatus:
+          Deleting file "cmTC_5dc45.dir\\Debug\\cmTC_5dc45.tlog\\unsuccessfulbuild".
+          Touching "cmTC_5dc45.dir\\Debug\\cmTC_5dc45.tlog\\cmTC_5dc45.lastbuildstate".
+        Done Building Project "C:\\Users\\Admin\\Documents\\GitHub\\fluid-dynamics1\\build_win\\CMakeFiles\\CMakeScratch\\TryCompile-0z2htl\\cmTC_5dc45.vcxproj" (default targets).
+        
+        Build succeeded.
+            0 Warning(s)
+            0 Error(s)
+        
+        Time Elapsed 00:00:00.67
+        
+      exitCode: 0
+...

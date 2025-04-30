@@ -1,0 +1,10 @@
+^C:\USERS\ADMIN\DOCUMENTS\GITHUB\FLUID-DYNAMICS1\BUILD_WIN\CMAKEFILES\3C5E75DAFE466FBB12EAD7CEE0AB82AA\GENERATE.STAMP.RULE
+setlocal
+D:\CMake\bin\cmake.exe -SC:/Users/Admin/Documents/GitHub/fluid-dynamics1 -BC:/Users/Admin/Documents/GitHub/fluid-dynamics1/build_win --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/Admin/Documents/GitHub/fluid-dynamics1/build_win/cnavier.sln
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

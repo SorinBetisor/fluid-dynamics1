@@ -1,0 +1,3 @@
+C:/Users/Admin/Documents/GitHub/fluid-dynamics1/build_win/CMakeFiles/cnavier.dir
+C:/Users/Admin/Documents/GitHub/fluid-dynamics1/build_win/CMakeFiles/ALL_BUILD.dir
+C:/Users/Admin/Documents/GitHub/fluid-dynamics1/build_win/CMakeFiles/ZERO_CHECK.dir

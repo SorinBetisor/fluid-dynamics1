@@ -1,0 +1,8 @@
+C:\Users\Admin\Documents\GitHub\fluid-dynamics1\src\finitediff.c;C:\Users\Admin\Documents\GitHub\fluid-dynamics1\build_win\cnavier.dir\Release\finitediff.obj
+C:\Users\Admin\Documents\GitHub\fluid-dynamics1\src\fluiddyn.c;C:\Users\Admin\Documents\GitHub\fluid-dynamics1\build_win\cnavier.dir\Release\fluiddyn.obj
+C:\Users\Admin\Documents\GitHub\fluid-dynamics1\src\gl_dummy.c;C:\Users\Admin\Documents\GitHub\fluid-dynamics1\build_win\cnavier.dir\Release\gl_dummy.obj
+C:\Users\Admin\Documents\GitHub\fluid-dynamics1\src\linearalg.c;C:\Users\Admin\Documents\GitHub\fluid-dynamics1\build_win\cnavier.dir\Release\linearalg.obj
+C:\Users\Admin\Documents\GitHub\fluid-dynamics1\src\main.c;C:\Users\Admin\Documents\GitHub\fluid-dynamics1\build_win\cnavier.dir\Release\main.obj
+C:\Users\Admin\Documents\GitHub\fluid-dynamics1\src\poisson.c;C:\Users\Admin\Documents\GitHub\fluid-dynamics1\build_win\cnavier.dir\Release\poisson.obj
+C:\Users\Admin\Documents\GitHub\fluid-dynamics1\src\utils.c;C:\Users\Admin\Documents\GitHub\fluid-dynamics1\build_win\cnavier.dir\Release\utils.obj
+C:\Users\Admin\Documents\GitHub\fluid-dynamics1\src\vulkan_dummy.c;C:\Users\Admin\Documents\GitHub\fluid-dynamics1\build_win\cnavier.dir\Release\vulkan_dummy.obj
