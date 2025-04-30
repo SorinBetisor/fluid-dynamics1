@@ -13,6 +13,7 @@
 #include "fluiddyn.h"
 #include "gl_solver.h"  // Include GPU solver header
 #include "vulkan_solver.h" // Include Vulkan solver header
+#include "config.h" // Include configuration header
 
 // Timing functions for when OpenMP is not available
 #ifdef DISABLE_OPENMP
@@ -37,29 +38,37 @@ int main(int argc, char *argv[])
 {
     // srand(time(NULL));
     int i, j, t;
+    
+    // Parse configuration file (use default if not specified)
+    const char* configFile = "config.txt";
+    if (argc > 1) {
+        configFile = argv[1];
+    }
+    
+    Config config = parseConfigFile(configFile);
 
     // Physical parameters
-    double Re = 1000.; // Reynolds number
-    int Lx = 1;        // length
-    int Ly = 1;        // width
+    double Re = config.Re;      // Reynolds number
+    int Lx = config.Lx;         // length
+    int Ly = config.Ly;         // width
 
     // Numerical parameters
-    int nx = 128;                                                                       // increase resolution to 128x128
-    int ny = 128;                                                                       // increase resolution to 128x128
-    double dt = 0.005;                                                                 // time step
-    double tf = 1.0;                                                                    // final time
-    double max_co = 1.;                                                                // max Courant number
-    int order = 6;                                                                     // finite difference order for spatial derivatives
-    int poisson_max_it = 10000;                                                        // Poisson equation max number of iterations
-    double poisson_tol = 1E-3;                                                         // Poisson equation criterion for convergence
-    int output_interval = 10;                                                          // Output interval for .vtk files
-    int poisson_type = 2;                                                              // 1 - no relaxation | 2 - successive overrelaxation
+    int nx = config.nx;                                                            // grid resolution in x direction
+    int ny = config.ny;                                                            // grid resolution in y direction
+    double dt = config.dt;                                                         // time step
+    double tf = config.tf;                                                         // final time
+    double max_co = config.max_co;                                                 // max Courant number
+    int order = config.order;                                                      // finite difference order for spatial derivatives
+    int poisson_max_it = config.poisson_max_it;                                    // Poisson equation max number of iterations
+    double poisson_tol = config.poisson_tol;                                       // Poisson equation criterion for convergence
+    int output_interval = config.output_interval;                                  // Output interval for .vtk files
+    int poisson_type = config.poisson_type;                                        // 1 - no relaxation | 2 - successive overrelaxation
     double beta = 0.5 * (2 / (1 + sin(PI / (nx + 1))) + 2 / (1 + sin(PI / (ny + 1)))); // SOR poisson parameter
     
     // Acceleration options
-    int use_omp = 1;          // Use OpenMP for parallelization
-    int use_gpu = 1;          // Use GPU for Poisson solver
-    int use_vulkan = 0;       // Use Vulkan for Poisson solver
+    int use_omp = config.use_omp;              // Use OpenMP for parallelization
+    int use_gpu = config.use_gpu;              // Use GPU for Poisson solver
+    int use_vulkan = config.use_vulkan;        // Use Vulkan for Poisson solver
     
 #ifdef DISABLE_OPENMP
     use_omp = 0;  // Force disable OpenMP if not available
@@ -115,9 +124,9 @@ int main(int argc, char *argv[])
 #endif
 
     // Object parameters
-    double center_x = 0.5 * Lx;  // Center of object in x direction
-    double center_y = 0.5 * Ly;  // Center of object in y direction
-    double radius = 0.1;         // Radius of circular object
+    double center_x = config.center_x;  // Center of object in x direction
+    double center_y = config.center_y;  // Center of object in y direction
+    double radius = config.radius;      // Radius of circular object
 
     printf("Poisson SOR parameter: %lf\n", beta);
     printf("Adding circular object at (%.2f, %.2f) with radius %.2f\n", center_x, center_y, radius);

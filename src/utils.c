@@ -31,7 +31,7 @@ void printvtk(mtrx A, char *title)
 
     snprintf(name, sizeof(name), "./output/%s-1-%d.vtk", title, count);
 
-    if ((pf = fopen(name, "a")) == NULL)
+    if ((pf = fopen(name, "w")) == NULL)
     {
         printf("\nError while opening file\n");
         exit(1);
