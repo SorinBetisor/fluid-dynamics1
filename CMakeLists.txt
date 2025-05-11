@@ -25,8 +25,6 @@ set(SPIRV_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/shaders")
 file(MAKE_DIRECTORY ${SPIRV_OUTPUT_DIR})
 
 file(GLOB_RECURSE GLSL_SOURCE_FILES
-    "${PROJECT_SOURCE_DIR}/shaders/*.frag"
-    "${PROJECT_SOURCE_DIR}/shaders/*.vert"
     "${PROJECT_SOURCE_DIR}/shaders/*.comp"
     )
 
@@ -41,12 +39,6 @@ foreach(GLSL ${GLSL_SOURCE_FILES})
     DEPENDS ${GLSL})
   list(APPEND SPIRV_BINARY_FILES ${SPIRV})
 endforeach(GLSL)
-
-file(COPY
-  ${PROJECT_SOURCE_DIR}/assets
-  DESTINATION
-  ${CMAKE_CURRENT_BINARY_DIR}
-)
 
 add_custom_target(
     Shaders 
