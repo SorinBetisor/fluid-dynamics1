@@ -81,6 +81,7 @@ public:
   AllocatedBuffer _fluidDensityBuffer;
   AllocatedBuffer _fluidPressureBuffer;
   AllocatedBuffer _fluidStreamFunctionBuffer;
+  AllocatedBuffer _fluidTempBuffer;
 
   VkDescriptorSetLayout _fluidSimDescriptorLayout;
   VkDescriptorSet _fluidSimDescriptorSet;

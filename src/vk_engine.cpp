@@ -296,6 +296,10 @@ void VulkanEngine::init_fluid_simulation_resources() {
   size_t densityBufferSize = numCells * sizeof(float);
   size_t pressureBufferSize = numCells * sizeof(float);
   size_t streamFuncBufferSize = numCells * sizeof(float);
+  size_t tempBufferSize =
+      numCells *
+      sizeof(glm::vec2); // temporary storage (sized for the maximum possible
+                         // size) cause we cant update the variables in place
 
   _fluidVelocityBuffer = create_buffer(velocityBufferSize,
                                        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
@@ -317,8 +321,15 @@ void VulkanEngine::init_fluid_simulation_resources() {
 
   _fluidStreamFunctionBuffer = create_buffer(
       streamFuncBufferSize,
-      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+          VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
       VMA_MEMORY_USAGE_GPU_ONLY);
+
+  _fluidTempBuffer = create_buffer(tempBufferSize,
+                                   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+                                       VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                                       VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                   VMA_MEMORY_USAGE_GPU_ONLY);
 
   std::vector<float> initialDensities(numCells, 0.0f);
   for (uint32_t y = _fluidGridDimensions.y / 4;
@@ -363,6 +374,7 @@ void VulkanEngine::init_fluid_simulation_resources() {
   builder.add_bindings(1, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
   builder.add_bindings(2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
   builder.add_bindings(3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+  builder.add_bindings(4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
   _fluidSimDescriptorLayout =
       builder.build(_device, VK_SHADER_STAGE_COMPUTE_BIT);
 
@@ -389,7 +401,12 @@ void VulkanEngine::init_fluid_simulation_resources() {
   streamFuncBufferInfo.offset = 0;
   streamFuncBufferInfo.range = streamFuncBufferSize;
 
-  VkWriteDescriptorSet writes[4];
+  VkDescriptorBufferInfo tempBufferInfo{};
+  streamFuncBufferInfo.buffer = _fluidTempBuffer.buffer;
+  streamFuncBufferInfo.offset = 0;
+  streamFuncBufferInfo.range = tempBufferSize;
+
+  VkWriteDescriptorSet writes[5];
   writes[0] = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                               _fluidSimDescriptorSet,
                                               &velocityBufferInfo, 0);
@@ -402,8 +419,11 @@ void VulkanEngine::init_fluid_simulation_resources() {
   writes[3] = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                               _fluidSimDescriptorSet,
                                               &streamFuncBufferInfo, 3);
+  writes[4] = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                              _fluidSimDescriptorSet,
+                                              &streamFuncBufferInfo, 4);
 
-  vkUpdateDescriptorSets(_device, 4, writes, 0, nullptr);
+  vkUpdateDescriptorSets(_device, 5, writes, 0, nullptr);
 
   VkPipelineLayoutCreateInfo pipelineLayoutInfo =
       vkinit::pipeline_layout_create_info();

@@ -1,12 +1,23 @@
 #version 450
 
-layout (local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 // Descriptor Set for Fluid Buffers
-layout(set = 0, binding = 0) buffer VelocityBuffer { vec2 velocities[]; };       // Vx, Vy
-layout(set = 0, binding = 1) buffer DensityBuffer { float densities[]; };         // Density scalar
-layout(set = 0, binding = 2) buffer PressureBuffer { float pressures[]; };       // Pressure (p) or divergence (b)
-layout(set = 0, binding = 3) buffer TempScalarBuffer { float tempScalars[]; }; // Temporary scalar buffer (e.g. for divergence or next pressure iter)
+layout(set = 0, binding = 0) buffer VelocityBuffer {
+    vec2 velocities[];
+}; // Vx, Vy
+layout(set = 0, binding = 1) buffer DensityBuffer {
+    float densities[];
+}; // Density scalar
+layout(set = 0, binding = 2) buffer PressureBuffer {
+    float pressures[];
+}; // Pressure (p) or divergence (b)
+layout(set = 0, binding = 3) buffer TempScalarBuffer { //change this later
+    float tempScalars[];
+}; // Temporary scalar buffer (e.g. for divergence or next pressure iter)
+layout(set = 0, binding = 3) buffer TempScalarBuffer {
+    float tempScalars[];
+}; // Temporary scalar buffer (e.g. for divergence or next pressure iter)
 
 // Push Constants
 layout(push_constant) uniform PushConstants {
@@ -84,7 +95,7 @@ float advect_density(uvec2 coord, vec2 current_velocity) {
 // Apply boundary conditions (simple clamp to edge, zero velocity at boundary)
 vec2 enforce_velocity_boundary(uvec2 coord, vec2 vel) {
     if (coord.x == 0 || coord.x == pc.gridDim.x - 1 ||
-        coord.y == 0 || coord.y == pc.gridDim.y - 1) {
+            coord.y == 0 || coord.y == pc.gridDim.y - 1) {
         return vec2(0.0); // No-slip boundary
     }
     return vel;
@@ -100,94 +111,97 @@ void main() {
         return;
     }
     uint idx = to_idx(gid);
+    //
+    //     // --- 1. Advection ---
+    //     vec2 current_vel = velocities[idx];
+    //     vec2 advected_vel = advect_velocity(gid, current_vel);
+    //
+    //     float current_density = densities[idx];
+    //     float advected_density = advect_density(gid, current_vel);
+    //
+    //     vec2 vel_after_advection_diffusion = advected_vel;
+    //
+    //     // --- 2. Pressure Projection (make velocity field divergence-free) ---
+    //     float div = 0.0;
+    //     vec2 vR = (gid.x < pc.gridDim.x - 1) ? velocities[to_idx(gid + uvec2(1,0))] : vec2(0);
+    //     vec2 vL = (gid.x > 0)                 ? velocities[to_idx(gid - uvec2(1,0))] : vec2(0);
+    //     vec2 vT = (gid.y < pc.gridDim.y - 1) ? velocities[to_idx(gid + uvec2(0,1))] : vec2(0);
+    //     vec2 vB = (gid.y > 0)                 ? velocities[to_idx(gid - uvec2(0,1))] : vec2(0);
+    //
+    //     float u_ip1 = (gid.x < pc.gridDim.x - 1) ? velocities[to_idx(gid + uvec2(1,0))].x : 0.0;
+    //     float u_im1 = (gid.x > 0)                 ? velocities[to_idx(gid - uvec2(1,0))].x : 0.0;
+    //     float v_jp1 = (gid.y < pc.gridDim.y - 1) ? velocities[to_idx(gid + uvec2(0,1))].y : 0.0;
+    //     float v_jm1 = (gid.y > 0)                 ? velocities[to_idx(gid - uvec2(0,1))].y : 0.0;
+    //     div = (u_ip1 - u_im1 + v_jp1 - v_jm1) * 0.5;
+    //
+    //     tempScalars[idx] = div;
+    //     pressures[idx] = 0.0;
+    //
+    //     barrier();
+    //
+    //     for (int k = 0; k < pc.numPressureIterations; ++k) {
+    //         float p_left   = (gid.x > 0)                 ? pressures[to_idx(gid - uvec2(1,0))] : pressures[idx];
+    //         float p_right  = (gid.x < pc.gridDim.x - 1) ? pressures[to_idx(gid + uvec2(1,0))] : pressures[idx];
+    //         float p_bottom = (gid.y > 0)                 ? pressures[to_idx(gid - uvec2(0,1))] : pressures[idx];
+    //         float p_top    = (gid.y < pc.gridDim.y - 1) ? pressures[to_idx(gid + uvec2(0,1))] : pressures[idx];
+    //
+    //         float sum_neighbor_pressures = p_left + p_right + p_bottom + p_top;
+    //         float current_divergence = tempScalars[idx];
+    //
+    //         if (k % 2 == 0) {
+    //              tempScalars[idx] = ( (gid.x > 0 ? pressures[to_idx(gid - uvec2(1,0))] : pressures[idx]) +
+    //                                   (gid.x < pc.gridDim.x - 1 ? pressures[to_idx(gid + uvec2(1,0))] : pressures[idx]) +
+    //                                   (gid.y > 0 ? pressures[to_idx(gid - uvec2(0,1))] : pressures[idx]) +
+    //                                   (gid.y < pc.gridDim.y - 1 ? pressures[to_idx(gid + uvec2(0,1))] : pressures[idx]) -
+    //                                   tempScalars[idx] ) / 4.0;
+    //         } else {
+    //              pressures[idx] = ( (gid.x > 0 ? tempScalars[to_idx(gid - uvec2(1,0))] : tempScalars[idx]) +
+    //                                 (gid.x < pc.gridDim.x - 1 ? tempScalars[to_idx(gid + uvec2(1,0))] : tempScalars[idx]) +
+    //                                 (gid.y > 0 ? tempScalars[to_idx(gid - uvec2(0,1))] : tempScalars[idx]) +
+    //                                 (gid.y < pc.gridDim.y - 1 ? tempScalars[to_idx(gid + uvec2(0,1))] : tempScalars[idx]) -
+    //                                 tempScalars[idx] ) / 4.0;
+    //         }
+    //         barrier();
+    //     }
+    //
+    //     if (pc.numPressureIterations % 2 == 0 && pc.numPressureIterations > 0) {
+    //         for (int k_iter = 0; k_iter < pc.numPressureIterations; ++k_iter) {
+    //             float p_val_left   = (gid.x > 0)                ? pressures[to_idx(gid - uvec2(1,0))] : pressures[idx];
+    //             float p_val_right  = (gid.x < pc.gridDim.x - 1) ? pressures[to_idx(gid + uvec2(1,0))] : pressures[idx];
+    //             float p_val_bottom = (gid.y > 0)                ? pressures[to_idx(gid - uvec2(0,1))] : pressures[idx];
+    //             float p_val_top    = (gid.y < pc.gridDim.y - 1) ? pressures[to_idx(gid + uvec2(0,1))] : pressures[idx];
+    //             float divergence_val = tempScalars[idx];
+    //
+    //             float next_pressure = (p_val_left + p_val_right + p_val_bottom + p_val_top - divergence_val) / 4.0f;
+    //             tempScalars[idx] = next_pressure;
+    //             barrier();
+    //             pressures[idx] = tempScalars[idx];
+    //             barrier();
+    //         }
+    //     }
+    //
+    //     float grad_p_x = 0.0;
+    //     float grad_p_y = 0.0;
+    //
+    //     float p_final_R = (gid.x < pc.gridDim.x - 1) ? pressures[to_idx(gid + uvec2(1,0))] : pressures[idx];
+    //     float p_final_L = (gid.x > 0)                 ? pressures[to_idx(gid - uvec2(1,0))] : pressures[idx];
+    //     float p_final_T = (gid.y < pc.gridDim.y - 1) ? pressures[to_idx(gid + uvec2(0,1))] : pressures[idx];
+    //     float p_final_B = (gid.y > 0)                 ? pressures[to_idx(gid - uvec2(0,1))] : pressures[idx];
+    //
+    //     grad_p_x = (p_final_R - p_final_L) * 0.5;
+    //     grad_p_y = (p_final_T - p_final_B) * 0.5;
+    //
+    //     vec2 pressure_gradient = vec2(grad_p_x, grad_p_y);
+    //     float factor = pc.deltaTime;
+    //
+    //     vec2 final_vel = vel_after_advection_diffusion - factor * pressure_gradient;
+    //
+    //     final_vel = enforce_velocity_boundary(gid, final_vel);
+    //     velocities[idx] = final_vel;
+    //
+    //     densities[idx] = enforce_density_boundary(gid, advected_density);
+    // }
 
-    // --- 1. Advection ---
-    vec2 current_vel = velocities[idx];
-    vec2 advected_vel = advect_velocity(gid, current_vel);
-    
-    float current_density = densities[idx];
-    float advected_density = advect_density(gid, current_vel);
-
-    vec2 vel_after_advection_diffusion = advected_vel;
-
-    // --- 2. Pressure Projection (make velocity field divergence-free) ---
-    float div = 0.0;
-    vec2 vR = (gid.x < pc.gridDim.x - 1) ? velocities[to_idx(gid + uvec2(1,0))] : vec2(0);
-    vec2 vL = (gid.x > 0)                 ? velocities[to_idx(gid - uvec2(1,0))] : vec2(0);
-    vec2 vT = (gid.y < pc.gridDim.y - 1) ? velocities[to_idx(gid + uvec2(0,1))] : vec2(0);
-    vec2 vB = (gid.y > 0)                 ? velocities[to_idx(gid - uvec2(0,1))] : vec2(0);
-
-    float u_ip1 = (gid.x < pc.gridDim.x - 1) ? velocities[to_idx(gid + uvec2(1,0))].x : 0.0;
-    float u_im1 = (gid.x > 0)                 ? velocities[to_idx(gid - uvec2(1,0))].x : 0.0;
-    float v_jp1 = (gid.y < pc.gridDim.y - 1) ? velocities[to_idx(gid + uvec2(0,1))].y : 0.0;
-    float v_jm1 = (gid.y > 0)                 ? velocities[to_idx(gid - uvec2(0,1))].y : 0.0;
-    div = (u_ip1 - u_im1 + v_jp1 - v_jm1) * 0.5;
-    
-    tempScalars[idx] = div;
-    pressures[idx] = 0.0;
-
-    barrier();
-
-    for (int k = 0; k < pc.numPressureIterations; ++k) {
-        float p_left   = (gid.x > 0)                 ? pressures[to_idx(gid - uvec2(1,0))] : pressures[idx];
-        float p_right  = (gid.x < pc.gridDim.x - 1) ? pressures[to_idx(gid + uvec2(1,0))] : pressures[idx];
-        float p_bottom = (gid.y > 0)                 ? pressures[to_idx(gid - uvec2(0,1))] : pressures[idx];
-        float p_top    = (gid.y < pc.gridDim.y - 1) ? pressures[to_idx(gid + uvec2(0,1))] : pressures[idx];
-        
-        float sum_neighbor_pressures = p_left + p_right + p_bottom + p_top;
-        float current_divergence = tempScalars[idx];
-
-        if (k % 2 == 0) {
-             tempScalars[idx] = ( (gid.x > 0 ? pressures[to_idx(gid - uvec2(1,0))] : pressures[idx]) +
-                                  (gid.x < pc.gridDim.x - 1 ? pressures[to_idx(gid + uvec2(1,0))] : pressures[idx]) +
-                                  (gid.y > 0 ? pressures[to_idx(gid - uvec2(0,1))] : pressures[idx]) +
-                                  (gid.y < pc.gridDim.y - 1 ? pressures[to_idx(gid + uvec2(0,1))] : pressures[idx]) -
-                                  tempScalars[idx] ) / 4.0;
-        } else {
-             pressures[idx] = ( (gid.x > 0 ? tempScalars[to_idx(gid - uvec2(1,0))] : tempScalars[idx]) +
-                                (gid.x < pc.gridDim.x - 1 ? tempScalars[to_idx(gid + uvec2(1,0))] : tempScalars[idx]) +
-                                (gid.y > 0 ? tempScalars[to_idx(gid - uvec2(0,1))] : tempScalars[idx]) +
-                                (gid.y < pc.gridDim.y - 1 ? tempScalars[to_idx(gid + uvec2(0,1))] : tempScalars[idx]) -
-                                tempScalars[idx] ) / 4.0;
-        }
-        barrier();
-    }
-
-    if (pc.numPressureIterations % 2 == 0 && pc.numPressureIterations > 0) {
-        for (int k_iter = 0; k_iter < pc.numPressureIterations; ++k_iter) {
-            float p_val_left   = (gid.x > 0)                ? pressures[to_idx(gid - uvec2(1,0))] : pressures[idx];
-            float p_val_right  = (gid.x < pc.gridDim.x - 1) ? pressures[to_idx(gid + uvec2(1,0))] : pressures[idx];
-            float p_val_bottom = (gid.y > 0)                ? pressures[to_idx(gid - uvec2(0,1))] : pressures[idx];
-            float p_val_top    = (gid.y < pc.gridDim.y - 1) ? pressures[to_idx(gid + uvec2(0,1))] : pressures[idx];
-            float divergence_val = tempScalars[idx];
-            
-            float next_pressure = (p_val_left + p_val_right + p_val_bottom + p_val_top - divergence_val) / 4.0f;
-            tempScalars[idx] = next_pressure;
-            barrier();
-            pressures[idx] = tempScalars[idx];
-            barrier();
-        }
-    }
-
-    float grad_p_x = 0.0;
-    float grad_p_y = 0.0;
-
-    float p_final_R = (gid.x < pc.gridDim.x - 1) ? pressures[to_idx(gid + uvec2(1,0))] : pressures[idx];
-    float p_final_L = (gid.x > 0)                 ? pressures[to_idx(gid - uvec2(1,0))] : pressures[idx];
-    float p_final_T = (gid.y < pc.gridDim.y - 1) ? pressures[to_idx(gid + uvec2(0,1))] : pressures[idx];
-    float p_final_B = (gid.y > 0)                 ? pressures[to_idx(gid - uvec2(0,1))] : pressures[idx];
-
-    grad_p_x = (p_final_R - p_final_L) * 0.5;
-    grad_p_y = (p_final_T - p_final_B) * 0.5;
-
-    vec2 pressure_gradient = vec2(grad_p_x, grad_p_y);
-    float factor = pc.deltaTime;
-
-    vec2 final_vel = vel_after_advection_diffusion - factor * pressure_gradient;
-
-    final_vel = enforce_velocity_boundary(gid, final_vel);
-    velocities[idx] = final_vel;
-    
-    densities[idx] = enforce_density_boundary(gid, advected_density);
+    velocities[idx] = vec2(pc.deltaTime, pc.density);
+    densities[idx] = pc.viscosity;
 }
-
