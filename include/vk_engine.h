@@ -104,6 +104,7 @@ public:
   void cleanup();
 
   void run_simulation_loop();
+  void simulation_step();
 
   void immediate_submit(std::function<void(VkCommandBuffer cmd)> &&function);
 

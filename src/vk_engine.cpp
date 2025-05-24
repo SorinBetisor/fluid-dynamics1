@@ -421,7 +421,7 @@ void VulkanEngine::init_fluid_simulation_resources() {
                                               &streamFuncBufferInfo, 3);
   writes[4] = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                               _fluidSimDescriptorSet,
-                                              &streamFuncBufferInfo, 4);
+                                              &tempBufferInfo, 4);
 
   vkUpdateDescriptorSets(_device, 5, writes, 0, nullptr);
 
@@ -516,36 +516,39 @@ void VulkanEngine::dispatch_fluid_simulation(VkCommandBuffer cmd) {
                 (_fluidGridDimensions.y + groupSizeY - 1) / groupSizeY, 1);
 }
 
+void VulkanEngine::simulation_step() {
+  VK_CHECK(vkWaitForFences(_device, 1, &get_current_frame()._renderFence, true,
+                           1000000000));
+  get_current_frame()._deletionQueue.flush();
+  VK_CHECK(vkResetFences(_device, 1, &get_current_frame()._renderFence));
+
+  VkCommandBuffer cmd = get_current_frame()._mainCommandBuffer;
+  VK_CHECK(vkResetCommandBuffer(cmd, 0));
+
+  VkCommandBufferBeginInfo cmdBeginInfo = vkinit::command_buffer_begin_info(
+      VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+  VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
+
+  dispatch_fluid_simulation(cmd);
+
+  VK_CHECK(vkEndCommandBuffer(cmd));
+
+  VkCommandBufferSubmitInfo cmdinfo = vkinit::command_buffer_submit_info(cmd);
+  VkSubmitInfo2 submit = vkinit::submit_info(&cmdinfo, nullptr, nullptr);
+
+  VK_CHECK(vkQueueSubmit2(_graphicsQueue, 1, &submit,
+                          get_current_frame()._renderFence));
+
+  // Wait for the simulation to complete before reading buffers
+  VK_CHECK(vkWaitForFences(_device, 1, &get_current_frame()._renderFence, true,
+                           999999999999));
+}
+
 void VulkanEngine::run_simulation_loop() {
   bool bQuit = false;
 
   while (!bQuit) {
-    VK_CHECK(vkWaitForFences(_device, 1, &get_current_frame()._renderFence,
-                             true, 1000000000));
-    get_current_frame()._deletionQueue.flush();
-    VK_CHECK(vkResetFences(_device, 1, &get_current_frame()._renderFence));
-
-    VkCommandBuffer cmd = get_current_frame()._mainCommandBuffer;
-    VK_CHECK(vkResetCommandBuffer(cmd, 0));
-
-    VkCommandBufferBeginInfo cmdBeginInfo = vkinit::command_buffer_begin_info(
-        VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-    VK_CHECK(vkBeginCommandBuffer(cmd, &cmdBeginInfo));
-
-    dispatch_fluid_simulation(cmd);
-
-    VK_CHECK(vkEndCommandBuffer(cmd));
-
-    VkCommandBufferSubmitInfo cmdinfo = vkinit::command_buffer_submit_info(cmd);
-    VkSubmitInfo2 submit = vkinit::submit_info(&cmdinfo, nullptr, nullptr);
-
-    VK_CHECK(vkQueueSubmit2(_graphicsQueue, 1, &submit,
-                            get_current_frame()._renderFence));
-
-    // Wait for the simulation to complete before reading buffers
-    VK_CHECK(vkWaitForFences(_device, 1, &get_current_frame()._renderFence,
-                             true, 999999999999));
-
+    simulation_step();
     // Read and print buffer contents
     uint32_t numCells = _fluidGridDimensions.x * _fluidGridDimensions.y;
     uint32_t printCount =

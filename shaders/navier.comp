@@ -12,11 +12,11 @@ layout(set = 0, binding = 1) buffer DensityBuffer {
 layout(set = 0, binding = 2) buffer PressureBuffer {
     float pressures[];
 }; // Pressure (p) or divergence (b)
-layout(set = 0, binding = 3) buffer TempScalarBuffer { //change this later
-    float tempScalars[];
-}; // Temporary scalar buffer (e.g. for divergence or next pressure iter)
-layout(set = 0, binding = 3) buffer TempScalarBuffer {
-    float tempScalars[];
+layout(set = 0, binding = 3) buffer StreamFunction {
+    float streamFuncScalars[];
+};
+layout(set = 0, binding = 4) buffer TempScalarBuffer {
+    vec2 tempVec2[];
 }; // Temporary scalar buffer (e.g. for divergence or next pressure iter)
 
 // Push Constants
@@ -110,7 +110,7 @@ void main() {
     if (gid.x >= pc.gridDim.x || gid.y >= pc.gridDim.y) {
         return;
     }
-    uint idx = to_idx(gid);
+    uint idx = to_idx(gid); //get the buffer placement of a thread
     //
     //     // --- 1. Advection ---
     //     vec2 current_vel = velocities[idx];
