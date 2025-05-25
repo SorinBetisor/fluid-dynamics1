@@ -129,4 +129,8 @@ private:
   template <typename T>
   std::vector<T> read_buffer_to_cpu(const AllocatedBuffer &gpuBuffer,
                                     size_t itemCount);
+  template <typename T>
+  void write_buffer_to_vtk(const AllocatedBuffer &gpuBuffer,
+                           const std::string &dataName,
+                           const std::string &baseFilename);
 };

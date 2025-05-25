@@ -1,16 +1,9 @@
 #include "execPath.h"
-#include "glm/ext/matrix_clip_space.hpp"
-#include "glm/ext/matrix_float4x4.hpp"
-#include "glm/ext/matrix_transform.hpp"
-#include "glm/ext/vector_float3.hpp"
-#include "glm/ext/vector_float4.hpp"
-#include "glm/gtx/transform.hpp"
-#include "glm/trigonometric.hpp"
-#include "vk_images.h"
-#include <array>
-#include <cmath>
 #include <cstddef>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
 #include <string>
 #include <system_error>
 #include <vector>
@@ -604,3 +597,136 @@ void VulkanEngine::run_simulation_loop() {
     // quit
   }
 }
+
+template <typename T>
+void VulkanEngine::write_buffer_to_vtk(
+    const AllocatedBuffer &gpuBuffer, const std::string &dataName,
+    const std::string &baseFilename) { // Untested
+  if (!_isInitialized) {
+    std::cerr << "VulkanEngine not initialized, cannot write VTK for "
+              << dataName << "." << std::endl;
+    return;
+  }
+
+  uint32_t gridWidth = _fluidGridDimensions.x;
+  uint32_t gridHeight = _fluidGridDimensions.y;
+  size_t totalPoints = static_cast<size_t>(gridWidth) * gridHeight;
+
+  if (totalPoints == 0) {
+    std::cerr << "Error: Grid dimensions are zero (" << gridWidth << "x"
+              << gridHeight << "), cannot write VTK for " << dataName
+              << std::endl;
+    return;
+  }
+
+  std::vector<T> cpuData = read_buffer_to_cpu<T>(gpuBuffer, totalPoints);
+
+  if (cpuData.empty()) {
+    std::cerr << "Error: Failed to read buffer to CPU for VTK export: "
+              << dataName << std::endl;
+    return;
+  }
+  if (cpuData.size() != totalPoints) {
+    std::cerr << "Error: Read incorrect number of items from GPU buffer for "
+              << dataName << ". Expected " << totalPoints << ", got "
+              << cpuData.size() << std::endl;
+    return;
+  }
+
+  // Ensure output directory exists
+  const std::string outputDir =
+      _filePath +
+      "/output_vtk"; // Changed from "./output" to avoid potential conflicts
+  try {
+    if (!std::filesystem::exists(outputDir)) {
+      std::filesystem::create_directories(outputDir);
+    }
+  } catch (const std::filesystem::filesystem_error &e) {
+    std::cerr << "Error creating output directory " << outputDir << ": "
+              << e.what() << std::endl;
+    return;
+  }
+
+  std::string filename = outputDir + "/" + baseFilename + "_" + dataName + "_" +
+                         std::to_string(_frameNumber) + ".vtk";
+  std::ofstream vtkFile;
+
+  if (!vtkFile.is_open()) {
+    std::cerr << "Error: Could not open VTK file for writing: " << filename
+              << std::endl;
+    return;
+  }
+
+  std::cout << "Writing VTK file: " << filename << std::endl;
+
+  // VTK Headers
+  vtkFile << "# vtk DataFile Version 2.0\n";
+  vtkFile << dataName << " data from frame " << _frameNumber
+          << " (grid: " << gridWidth << "x" << gridHeight
+          << ")\n"; // More descriptive title
+  vtkFile << "ASCII\n";
+  vtkFile << "DATASET STRUCTURED_POINTS\n";
+  vtkFile << "DIMENSIONS " << gridWidth << " " << gridHeight
+          << " 1\n";            // nx ny nz
+  vtkFile << "ORIGIN 0 0 0\n";  // Assuming origin is 0,0,0 for simplicity
+  vtkFile << "SPACING 1 1 1\n"; // Assuming unit spacing for simplicity
+
+  vtkFile << "POINT_DATA " << totalPoints << "\n";
+
+  // Type-specific header and data writing
+  // VTK data order for STRUCTURED_POINTS: iterate x, then y, then z
+  // For our 2D case (z=1): iterate i from 0 to gridWidth-1 (fastest), then j
+  // from 0 to gridHeight-1 (slower) This corresponds to cpuData[j * gridWidth +
+  // i] for row-major storage.
+
+  if constexpr (std::is_same_v<T, float>) {
+    vtkFile << "SCALARS " << dataName
+            << " float 1\n"; // "1" is num_components, optional for scalars if 1
+    vtkFile << "LOOKUP_TABLE default\n";
+    vtkFile << std::fixed << std::setprecision(6);
+    for (uint32_t j = 0; j < gridHeight; ++j) {  // y-coordinate (row)
+      for (uint32_t i = 0; i < gridWidth; ++i) { // x-coordinate (column)
+        size_t index = j * gridWidth + i;        // Row-major access
+        vtkFile << (i == 0 ? "" : " ") << cpuData[index];
+      }
+      vtkFile << "\n";
+    }
+  } else if constexpr (std::is_same_v<T, glm::vec2>) {
+    vtkFile << "VECTORS " << dataName
+            << " float\n"; // VTK expects 3 components for VECTORS in
+                           // structured_points. The data type (float) is
+                           // specified here.
+    vtkFile << std::fixed << std::setprecision(6);
+    for (uint32_t j = 0; j < gridHeight; ++j) {  // y-coordinate (row)
+      for (uint32_t i = 0; i < gridWidth; ++i) { // x-coordinate (column)
+        size_t index = j * gridWidth + i;        // Row-major access
+        vtkFile << cpuData[index].x << " " << cpuData[index].y
+                << " 0.0\n"; // Add a Z=0 component
+      }
+    }
+  } else {
+    vtkFile.close();
+    // std::filesystem::remove(filename);
+    std::cerr << "Error: Unsupported data type for VTK export: "
+              << typeid(T).name() << ". Only float and glm::vec2 are supported."
+              << std::endl;
+    // throw std::runtime_error("Unsupported data type for VTK export: " +
+    // std::string(typeid(T).name()));
+    return;
+  }
+
+  vtkFile.close();
+  if (!vtkFile) { // Check for errors during close or writing
+    std::cerr << "Error writing or closing VTK file: " << filename << std::endl;
+  }
+}
+
+// Explicit template instantiations (optional, but can help catch compilation
+// errors earlier and speed up linking) Place these at the end of
+// VulkanEngine.cpp if you want them. Make sure glm::vec2 is defined before this
+// point.
+template void VulkanEngine::write_buffer_to_vtk<float>(const AllocatedBuffer &,
+                                                       const std::string &,
+                                                       const std::string &);
+template void VulkanEngine::write_buffer_to_vtk<glm::vec2>(
+    const AllocatedBuffer &, const std::string &, const std::string &);

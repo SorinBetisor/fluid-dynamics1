@@ -19,10 +19,11 @@ set_property(CACHE TARGET_PLATFORM PROPERTY STRINGS Linux Windows)
 
 find_program(GLSL_VALIDATOR glslangValidator HINTS /usr/bin /usr/local/bin $ENV{VULKAN_SDK}/Bin/ $ENV{VULKAN_SDK}/Bin32/)
 
-# Where we’ll emit our .spv files:
 set(SPIRV_OUTPUT_DIR "${CMAKE_CURRENT_BINARY_DIR}/shaders")
-# Make sure it exists (at configure time):
 file(MAKE_DIRECTORY ${SPIRV_OUTPUT_DIR})
+
+set(OUTPUT_VTK_DIR "${CMAKE_CURRENT_BINARY_DIR}/output_vtk")
+file(MAKE_DIRECTORY ${OUTPUT_VTK_DIR})
 
 file(GLOB_RECURSE GLSL_SOURCE_FILES
     "${PROJECT_SOURCE_DIR}/shaders/*.comp"
