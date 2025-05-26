@@ -6,8 +6,8 @@ Ly = 1                     # Width
 # Numerical parameters
 nx = 32                    # Grid resolution in x direction (low for stability)
 ny = 32                    # Grid resolution in y direction (low for stability)
-dt = 0.01                  # Time step (very small for stability)
-tf = 2.0                   # Final time (shorter for testing)
+dt = 0.0001                  # Time step (very small for stability)
+tf = 50.0                   # Final time (shorter for testing)
 max_co = 1.0               # Max Courant number
 order = 2                  # Finite difference order (lower for stability)
 poisson_max_it = 50000     # Poisson equation max iterations (very high)

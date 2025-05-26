@@ -41,9 +41,17 @@ int main(int argc, char *argv[])
     
     // Parse configuration file (use default if not specified)
     const char* configFile = "config.txt";
+    const char* outputDir = "default";  // Default output directory
+    
     if (argc > 1) {
         configFile = argv[1];
     }
+    if (argc > 2) {
+        outputDir = argv[2];
+    }
+    
+    printf("Using config file: %s\n", configFile);
+    printf("Output directory: ./output/%s/\n", outputDir);
     
     Config config = parseConfigFile(configFile);
 
@@ -465,12 +473,12 @@ int main(int argc, char *argv[])
 
         if (t % output_interval == 0)
         {
-            // printvtk(psi, "stream-function");
-            printvtk(w, "vorticity");
-            printvtk(u, "x-velocity");
-            printvtk(v, "y-velocity");
-            printvtk(obj, "object");
-            // printvtk(p, "pressure");
+            // printvtk(psi, "stream-function", outputDir);
+            printvtk(w, "vorticity", outputDir);
+            printvtk(u, "x-velocity", outputDir);
+            printvtk(v, "y-velocity", outputDir);
+            printvtk(obj, "object", outputDir);
+            // printvtk(p, "pressure", outputDir);
         }
 
         // Free memory

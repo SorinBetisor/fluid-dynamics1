@@ -1,5 +1,11 @@
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
+#include <sys/stat.h>
+#ifdef _WIN32
+#include <direct.h>
+#define mkdir(path, mode) _mkdir(path)
+#endif
 #include "linearalg.h"
 #include "utils.h"
 
@@ -10,12 +16,13 @@ double randdouble(double min, double max)
     return min + (rand() / div);
 }
 
-void printvtk(mtrx A, char *title)
+void printvtk(mtrx A, char *title, const char *output_dir)
 {
     int i, j;
     char c[320];
     static int count = 0;
-    char name[64];
+    char name[256];
+    char full_path[512];
     FILE *pf;
 
     if (A.M == NULL)
@@ -29,11 +36,20 @@ void printvtk(mtrx A, char *title)
         exit(1);
     }
 
-    snprintf(name, sizeof(name), "./output/%s-1-%d.vtk", title, count);
+    // Create the full output directory path
+    snprintf(full_path, sizeof(full_path), "./output/%s", output_dir);
+    
+    // Create the directory if it doesn't exist (recursive creation)
+    char temp_path[512];
+    strcpy(temp_path, "./output");
+    mkdir(temp_path, 0755);  // Create output directory first
+    mkdir(full_path, 0755);  // Then create the subdirectory
+    
+    snprintf(name, sizeof(name), "%s/%s-1-%d.vtk", full_path, title, count);
 
     if ((pf = fopen(name, "a")) == NULL)
     {
-        printf("\nError while opening file\n");
+        printf("\nError while opening file: %s\n", name);
         exit(1);
     }
 

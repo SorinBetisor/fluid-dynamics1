@@ -2,3 +2,4 @@ build/
 *.o
 vulkan_app
 *.spv
+output/

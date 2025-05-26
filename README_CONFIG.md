@@ -8,12 +8,34 @@ This project now includes a configuration system that allows you to change simul
 2. Run the simulation with:
 
    ```
-   .\Release\cnavier.exe [path_to_config_file]
+   .\Release\cnavier.exe [path_to_config_file] [output_directory_name]
    ```
 
-   If no config file is specified, it will use `config.txt` by default.
-3. The output VTK files will be generated in the `output` directory.
+   **Usage Examples:**
+
+   - `.\Release\cnavier.exe` - Uses default config.txt and saves to `./output/default/`
+   - `.\Release\cnavier.exe .\configs\stable.txt` - Uses stable.txt config and saves to `./output/default/`
+   - `.\Release\cnavier.exe .\configs\stable.txt my_simulation` - Uses stable.txt config and saves to `./output/my_simulation/`
+3. The output VTK files will be generated in the `output/[specified_directory_name]/` directory.
 4. Open the VTK files in ParaView to visualize the simulation results.
+
+## Organizing Multiple Simulation Runs
+
+The output directory parameter is particularly useful for organizing different simulation runs:
+
+```bash
+# Parameter study with different Reynolds numbers
+.\Release\cnavier.exe .\configs\re100.txt re100_run
+.\Release\cnavier.exe .\configs\re500.txt re500_run
+.\Release\cnavier.exe .\configs\re1000.txt re1000_run
+
+# Different configurations
+.\Release\cnavier.exe .\configs\stable.txt stable_test
+.\Release\cnavier.exe .\configs\high_res.txt high_resolution
+.\Release\cnavier.exe .\configs\no_obstacle.txt cavity_flow
+```
+
+Each simulation will create its own subdirectory under `./output/` with all the VTK files organized separately.
 
 ## Configuration Parameters
 
