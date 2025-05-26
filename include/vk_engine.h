@@ -85,10 +85,17 @@ public:
 
   // Fluid Simulation Resources
   AllocatedBuffer _fluidVelocityBuffer;
-  AllocatedBuffer _fluidDensityBuffer;
+  AllocatedBuffer _fluidVorticityBuffer;
   AllocatedBuffer _fluidPressureBuffer;
   AllocatedBuffer _fluidStreamFunctionBuffer;
-  AllocatedBuffer _fluidTempBuffer;
+  AllocatedBuffer _fluidTempScalarBuffer;
+  AllocatedBuffer _fluidTempVecBuffer;
+
+  VkPipeline _vorticityPipeline;
+  VkPipeline _advectionPipeline;
+  VkPipeline _poissonPipeline;
+  VkPipeline _velocityPipeline;
+  VkPipeline _pressurePipeline;
 
   VkDescriptorSetLayout _fluidSimDescriptorLayout;
   VkDescriptorSet _fluidSimDescriptorSet;
@@ -128,6 +135,8 @@ private:
   void init_fluid_simulation_resources();
 
   void dispatch_fluid_simulation(VkCommandBuffer cmd);
+
+  VkPipeline create_compute_pipeline(const std::string &spvPath);
 
   AllocatedBuffer create_buffer(size_t allocSize, VkBufferUsageFlags usage,
                                 VmaMemoryUsage memoryUsage);

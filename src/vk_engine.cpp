@@ -18,15 +18,11 @@
 #include <sys/types.h>
 #include <vk_engine.h>
 
-#include "SDL3/SDL_init.h"
-
 #include <vk_initializers.h>
 #include <vk_types.h>
 
 #include "VkBootstrap.h"
 
-#include <chrono>
-#include <thread>
 #include <vulkan/vulkan_core.h>
 
 constexpr bool bUseValidationLayers = true;
@@ -286,13 +282,11 @@ void VulkanEngine::cleanup() {
 void VulkanEngine::init_fluid_simulation_resources() {
   uint32_t numCells = _fluidGridDimensions.x * _fluidGridDimensions.y;
   size_t velocityBufferSize = numCells * sizeof(glm::vec2);
-  size_t densityBufferSize = numCells * sizeof(float);
+  size_t vorticityBufferSize = numCells * sizeof(float);
   size_t pressureBufferSize = numCells * sizeof(float);
   size_t streamFuncBufferSize = numCells * sizeof(float);
-  size_t tempBufferSize =
-      numCells *
-      sizeof(glm::vec2); // temporary storage (sized for the maximum possible
-                         // size) cause we cant update the variables in place
+  size_t tempScalarBufferSize = numCells * sizeof(float);
+  size_t tempVecBufferSize = numCells * sizeof(glm::vec2);
 
   _fluidVelocityBuffer = create_buffer(velocityBufferSize,
                                        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
@@ -300,11 +294,11 @@ void VulkanEngine::init_fluid_simulation_resources() {
                                            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                                        VMA_MEMORY_USAGE_GPU_ONLY);
 
-  _fluidDensityBuffer = create_buffer(densityBufferSize,
-                                      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-                                          VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                                          VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                                      VMA_MEMORY_USAGE_GPU_ONLY);
+  _fluidVorticityBuffer = create_buffer(vorticityBufferSize,
+                                        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+                                            VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                                            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                        VMA_MEMORY_USAGE_GPU_ONLY);
 
   _fluidPressureBuffer = create_buffer(pressureBufferSize,
                                        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
@@ -318,13 +312,19 @@ void VulkanEngine::init_fluid_simulation_resources() {
           VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
       VMA_MEMORY_USAGE_GPU_ONLY);
 
-  _fluidTempBuffer = create_buffer(tempBufferSize,
-                                   VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
-                                       VK_BUFFER_USAGE_TRANSFER_DST_BIT |
-                                       VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-                                   VMA_MEMORY_USAGE_GPU_ONLY);
+  _fluidTempScalarBuffer = create_buffer(tempScalarBufferSize,
+                                         VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+                                             VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                                             VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                         VMA_MEMORY_USAGE_GPU_ONLY);
 
-  std::vector<float> initialDensities(numCells, 0.0f);
+  _fluidTempVecBuffer = create_buffer(tempVecBufferSize,
+                                      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT |
+                                          VK_BUFFER_USAGE_TRANSFER_DST_BIT |
+                                          VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                                      VMA_MEMORY_USAGE_GPU_ONLY);
+
+  std::vector<float> initialVorticities(numCells, 0.0f);
   for (uint32_t y = _fluidGridDimensions.y / 4;
        y < 3 * _fluidGridDimensions.y / 4; ++y) {
     for (uint32_t x = _fluidGridDimensions.x / 4;
@@ -333,31 +333,31 @@ void VulkanEngine::init_fluid_simulation_resources() {
           x < _fluidGridDimensions.x / 2 + 20 &&
           y > _fluidGridDimensions.y / 2 - 20 &&
           y < _fluidGridDimensions.y / 2 + 20)
-        initialDensities[y * _fluidGridDimensions.x + x] = 1.0f;
+        initialVorticities[y * _fluidGridDimensions.x + x] = 1.0f;
     }
   }
 
-  AllocatedBuffer stagingDensityBuffer =
-      create_buffer(densityBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+  AllocatedBuffer stagingVorticityBuffer =
+      create_buffer(vorticityBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                     VMA_MEMORY_USAGE_CPU_ONLY);
-  memcpy(stagingDensityBuffer.allocation->GetMappedData(),
-         initialDensities.data(), densityBufferSize);
+  memcpy(stagingVorticityBuffer.allocation->GetMappedData(),
+         initialVorticities.data(), vorticityBufferSize);
   immediate_submit([&](VkCommandBuffer cmd) {
     VkBufferCopy copyRegion = {};
     copyRegion.dstOffset = 0;
     copyRegion.srcOffset = 0;
-    copyRegion.size = densityBufferSize;
-    vkCmdCopyBuffer(cmd, stagingDensityBuffer.buffer,
-                    _fluidDensityBuffer.buffer, 1, &copyRegion);
+    copyRegion.size = vorticityBufferSize;
+    vkCmdCopyBuffer(cmd, stagingVorticityBuffer.buffer,
+                    _fluidVorticityBuffer.buffer, 1, &copyRegion);
   });
-  destroy_buffer(stagingDensityBuffer);
+  destroy_buffer(stagingVorticityBuffer);
 
   // Always initialize the global descriptor allocator's pool
   // as this function is called once during engine initialization.
   // The previous check (globalDescriptorAllocator.pool == VK_NULL_HANDLE)
   // could fail if the pool was uninitialized with a non-null garbage value.
   std::vector<DescriptorAllocator::PoolSizeRatio> sizes = {
-      {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 40}};
+      {VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 50}};
   globalDescriptorAllocator.init_pool(_device, 10, sizes);
   _mainDeletionQueue.push_function(
       [this]() { globalDescriptorAllocator.destroy_pool(_device); });
@@ -368,6 +368,7 @@ void VulkanEngine::init_fluid_simulation_resources() {
   builder.add_bindings(2, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
   builder.add_bindings(3, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
   builder.add_bindings(4, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
+  builder.add_bindings(5, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER);
   _fluidSimDescriptorLayout =
       builder.build(_device, VK_SHADER_STAGE_COMPUTE_BIT);
 
@@ -379,10 +380,10 @@ void VulkanEngine::init_fluid_simulation_resources() {
   velocityBufferInfo.offset = 0;
   velocityBufferInfo.range = velocityBufferSize;
 
-  VkDescriptorBufferInfo densityBufferInfo{};
-  densityBufferInfo.buffer = _fluidDensityBuffer.buffer;
-  densityBufferInfo.offset = 0;
-  densityBufferInfo.range = densityBufferSize;
+  VkDescriptorBufferInfo vorticityBufferInfo{};
+  vorticityBufferInfo.buffer = _fluidVorticityBuffer.buffer;
+  vorticityBufferInfo.offset = 0;
+  vorticityBufferInfo.range = vorticityBufferSize;
 
   VkDescriptorBufferInfo pressureBufferInfo{};
   pressureBufferInfo.buffer = _fluidPressureBuffer.buffer;
@@ -394,18 +395,23 @@ void VulkanEngine::init_fluid_simulation_resources() {
   streamFuncBufferInfo.offset = 0;
   streamFuncBufferInfo.range = streamFuncBufferSize;
 
-  VkDescriptorBufferInfo tempBufferInfo{};
-  streamFuncBufferInfo.buffer = _fluidTempBuffer.buffer;
+  VkDescriptorBufferInfo tempScalarBufferInfo{};
+  streamFuncBufferInfo.buffer = _fluidTempScalarBuffer.buffer;
   streamFuncBufferInfo.offset = 0;
-  streamFuncBufferInfo.range = tempBufferSize;
+  streamFuncBufferInfo.range = tempScalarBufferSize;
 
-  VkWriteDescriptorSet writes[5];
+  VkDescriptorBufferInfo tempVecBufferInfo{};
+  streamFuncBufferInfo.buffer = _fluidTempVecBuffer.buffer;
+  streamFuncBufferInfo.offset = 0;
+  streamFuncBufferInfo.range = tempVecBufferSize;
+
+  VkWriteDescriptorSet writes[6];
   writes[0] = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                               _fluidSimDescriptorSet,
                                               &velocityBufferInfo, 0);
   writes[1] = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                               _fluidSimDescriptorSet,
-                                              &densityBufferInfo, 1);
+                                              &vorticityBufferInfo, 1);
   writes[2] = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                               _fluidSimDescriptorSet,
                                               &pressureBufferInfo, 2);
@@ -414,9 +420,12 @@ void VulkanEngine::init_fluid_simulation_resources() {
                                               &streamFuncBufferInfo, 3);
   writes[4] = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                               _fluidSimDescriptorSet,
-                                              &tempBufferInfo, 4);
+                                              &tempScalarBufferInfo, 4);
+  writes[5] = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                              _fluidSimDescriptorSet,
+                                              &tempVecBufferInfo, 5);
 
-  vkUpdateDescriptorSets(_device, 5, writes, 0, nullptr);
+  vkUpdateDescriptorSets(_device, 6, writes, 0, nullptr);
 
   VkPipelineLayoutCreateInfo pipelineLayoutInfo =
       vkinit::pipeline_layout_create_info();
@@ -433,108 +442,241 @@ void VulkanEngine::init_fluid_simulation_resources() {
   VK_CHECK(vkCreatePipelineLayout(_device, &pipelineLayoutInfo, nullptr,
                                   &_fluidSimPipelineLayout));
 
-  VkShaderModule fluidComputeShader;
-  std::string shaderPath = _filePath + "/shaders/navier.comp.spv";
-  if (!vkutil::load_shader_module(shaderPath.c_str(), _device,
-                                  &fluidComputeShader)) {
-    fmt::println(stderr, "Error when building the fluid compute shader: {}",
-                 shaderPath);
-  } else {
-    fmt::println("Fluid compute shader successfully loaded: {}", shaderPath);
-  }
-
-  VkPipelineShaderStageCreateInfo stageInfo{};
-  stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-  stageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-  stageInfo.module = fluidComputeShader;
-  stageInfo.pName = "main";
-
-  VkComputePipelineCreateInfo computePipelineCreateInfo{};
-  computePipelineCreateInfo.sType =
-      VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-  computePipelineCreateInfo.layout = _fluidSimPipelineLayout;
-  computePipelineCreateInfo.stage = stageInfo;
-
-  VK_CHECK(vkCreateComputePipelines(_device, VK_NULL_HANDLE, 1,
-                                    &computePipelineCreateInfo, nullptr,
-                                    &_fluidSimPipeline));
-
-  vkDestroyShaderModule(_device, fluidComputeShader, nullptr);
+  // VkShaderModule fluidComputeShader;
+  // std::string shaderPath = _filePath + "/shaders/navier.comp.spv";
+  // if (!vkutil::load_shader_module(shaderPath.c_str(), _device,
+  //                                 &fluidComputeShader)) {
+  //   fmt::println(stderr, "Error when building the fluid compute shader: {}",
+  //                shaderPath);
+  // } else {
+  //   fmt::println("Fluid compute shader successfully loaded: {}", shaderPath);
+  // }
+  //
+  // VkPipelineShaderStageCreateInfo stageInfo{};
+  // stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+  // stageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+  // stageInfo.module = fluidComputeShader;
+  // stageInfo.pName = "main";
+  //
+  // VkComputePipelineCreateInfo computePipelineCreateInfo{};
+  // computePipelineCreateInfo.sType =
+  //     VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+  // computePipelineCreateInfo.layout = _fluidSimPipelineLayout;
+  // computePipelineCreateInfo.stage = stageInfo;
+  //
+  // VK_CHECK(vkCreateComputePipelines(_device, VK_NULL_HANDLE, 1,
+  //                                   &computePipelineCreateInfo, nullptr,
+  //                                   &_fluidSimPipeline));
+  //
+  // vkDestroyShaderModule(_device, fluidComputeShader, nullptr);
+  _vorticityPipeline =
+      create_compute_pipeline(_filePath + "/shaders/vorticity.comp.spv");
+  _advectionPipeline =
+      create_compute_pipeline(_filePath + "/shaders/advectDiffuse.comp.spv");
+  _poissonPipeline =
+      create_compute_pipeline(_filePath + "/shaders/poissonSOR.comp.spv");
+  _velocityPipeline =
+      create_compute_pipeline(_filePath + "/shaders/velocityFromPsi.comp.spv");
+  // optional:
+  _pressurePipeline =
+      create_compute_pipeline(_filePath + "/shaders/pressureSOR.comp.spv");
 
   _mainDeletionQueue.push_function([this]() {
+    vkDestroyPipeline(_device, _vorticityPipeline, nullptr);
+    vkDestroyPipeline(_device, _advectionPipeline, nullptr);
+    vkDestroyPipeline(_device, _poissonPipeline, nullptr);
+    vkDestroyPipeline(_device, _velocityPipeline, nullptr);
+    vkDestroyPipeline(_device, _pressurePipeline, nullptr);
     vkDestroyPipelineLayout(_device, _fluidSimPipelineLayout, nullptr);
-    vkDestroyPipeline(_device, _fluidSimPipeline, nullptr);
+    // vkDestroyPipeline(_device, _fluidSimPipeline, nullptr);
     vkDestroyDescriptorSetLayout(_device, _fluidSimDescriptorLayout, nullptr);
     destroy_buffer(_fluidVelocityBuffer);
-    destroy_buffer(_fluidDensityBuffer);
+    destroy_buffer(_fluidVorticityBuffer);
     destroy_buffer(_fluidPressureBuffer);
     destroy_buffer(_fluidStreamFunctionBuffer);
-    destroy_buffer(_fluidTempBuffer);
+    destroy_buffer(_fluidTempVecBuffer);
+    destroy_buffer(_fluidTempScalarBuffer);
   });
 }
 
-void VulkanEngine::dispatch_fluid_simulation(VkCommandBuffer cmd) {
-  VkMemoryBarrier2 memoryBarrier = {.sType =
-                                        VK_STRUCTURE_TYPE_MEMORY_BARRIER_2};
-  memoryBarrier.srcStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-  memoryBarrier.srcAccessMask = VK_ACCESS_2_SHADER_WRITE_BIT;
-  memoryBarrier.dstStageMask = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT;
-  memoryBarrier.dstAccessMask =
-      VK_ACCESS_2_SHADER_READ_BIT | VK_ACCESS_2_SHADER_WRITE_BIT;
-
-  VkDependencyInfo dependencyInfo = {.sType =
-                                         VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
-  dependencyInfo.memoryBarrierCount = 1;
-  dependencyInfo.pMemoryBarriers = &memoryBarrier;
-
-  vkCmdPipelineBarrier2(cmd, &dependencyInfo);
-
-  vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, _fluidSimPipeline);
-  vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
-                          _fluidSimPipelineLayout, 0, 1,
-                          &_fluidSimDescriptorSet, 0, nullptr);
-
-  vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, _fluidSimPipeline);
-  vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
-                          _fluidSimPipelineLayout, 0, 1,
-                          &_fluidSimDescriptorSet, 0, nullptr);
-
-  _fluidSimConstants.gridDim = _fluidGridDimensions; // e.g., {128, 128}
-  _fluidSimConstants.deltaTime = 0.001f; // Adjust as needed for stability
-  _fluidSimConstants.density =
-      1.0f; // Nominal density, may not be directly used by shader
-  _fluidSimConstants.viscosity =
-      0.001f; // Kinematic viscosity (ν). For Re=U0*L/ν. If L=1, U0=1, Re=1000.
-  _fluidSimConstants.numPressureIterations =
-      50; // Iterations for Poisson solver for ψ
-  _fluidSimConstants.numOverallIterations = 1; // Unused by this shader
-
-  // For SOR method for Poisson equation ∇²ψ = -ω
-  // Optimal omegaSOR is problem-dependent, typically between 1.0 (Gauss-Seidel)
-  // and 2.0. For lid-driven cavity, values like 1.7-1.9 can be good. Start
-  // with 1.5 or 1.7.
-  _fluidSimConstants.omegaSOR = 1.7f;
-
-  // Lid-driven cavity specific parameters
-  _fluidSimConstants.lidVelocity = 1.0f; // Velocity U0 of the top lid
-  if (_fluidGridDimensions.x > 1) {
-    // Assuming domain is [0,1] x [0,1] or [0,width_units] x [0,height_units]
-    // h = physical_length / (number_of_cells_in_that_direction -1)
-    // For simplicity, if physical length of cavity is 1.0:
-    _fluidSimConstants.h =
-        1.0f / (float)(_fluidGridDimensions.x -
-                       1); // Cell size, assuming square cells and Width=1.0
-  } else {
-    _fluidSimConstants.h = 0.1f; // Default placeholder if grid is tiny
+VkPipeline VulkanEngine::create_compute_pipeline(const std::string &spvPath) {
+  // 1) load module
+  VkShaderModule module;
+  if (!vkutil::load_shader_module(spvPath.c_str(), _device, &module)) {
+    throw std::runtime_error("failed loading " + spvPath);
   }
 
-  vkCmdPushConstants(cmd, _fluidSimPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT,
-                     0, sizeof(FluidSimPushConstants), &_fluidSimConstants);
+  // 2) stage info
+  VkPipelineShaderStageCreateInfo stage{};
+  stage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+  stage.stage = VK_SHADER_STAGE_COMPUTE_BIT;
+  stage.module = module;
+  stage.pName = "main";
 
-  uint32_t groupSizeX = 16; // Must match local_size_x in shader
-  uint32_t groupSizeY = 16; // Must match local_size_y in shader
-  vkCmdDispatch(cmd, (_fluidGridDimensions.x + groupSizeX - 1) / groupSizeX,
-                (_fluidGridDimensions.y + groupSizeY - 1) / groupSizeY, 1);
+  // 3) pipeline create
+  VkComputePipelineCreateInfo pci{};
+  pci.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
+  pci.layout = _fluidSimPipelineLayout; // reuse the one you built
+  pci.stage = stage;
+
+  VkPipeline p;
+  VK_CHECK(
+      vkCreateComputePipelines(_device, VK_NULL_HANDLE, 1, &pci, nullptr, &p));
+
+  vkDestroyShaderModule(_device, module, nullptr);
+  return p;
+}
+
+void VulkanEngine::dispatch_fluid_simulation(VkCommandBuffer cmd) {
+  // Helper to bind pipeline, descriptors, and push constants then dispatch
+  auto run_compute_pass = [&](VkPipeline pipeline) {
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
+    vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
+                            _fluidSimPipelineLayout, 0, 1,
+                            &_fluidSimDescriptorSet, 0, nullptr);
+    vkCmdPushConstants(cmd, _fluidSimPipelineLayout,
+                       VK_SHADER_STAGE_COMPUTE_BIT, 0,
+                       sizeof(FluidSimPushConstants), &_fluidSimConstants);
+    const uint32_t gx = (_fluidGridDimensions.x + 15) / 16;
+    const uint32_t gy = (_fluidGridDimensions.y + 15) / 16;
+    vkCmdDispatch(cmd, gx, gy, 1);
+  };
+
+  VkMemoryBarrier2 memBarrier{VK_STRUCTURE_TYPE_MEMORY_BARRIER_2};
+  VkDependencyInfo depInfo{VK_STRUCTURE_TYPE_DEPENDENCY_INFO};
+  depInfo.memoryBarrierCount = 1;
+  depInfo.pMemoryBarriers = &memBarrier;
+
+  auto create_barrier =
+      [&](VkPipelineStageFlags2 srcStage, VkAccessFlags2 srcAccess,
+          VkPipelineStageFlags2 dstStage, VkAccessFlags2 dstAccess) {
+        memBarrier.srcStageMask = srcStage;
+        memBarrier.srcAccessMask = srcAccess;
+        memBarrier.dstStageMask = dstStage;
+        memBarrier.dstAccessMask = dstAccess;
+        vkCmdPipelineBarrier2(cmd, &depInfo);
+      };
+
+  // Copy regions
+  VkBufferCopy copyRegionScalar{
+      0, 0, _fluidGridDimensions.x * _fluidGridDimensions.y * sizeof(float)};
+  VkBufferCopy copyRegionVec{0, 0,
+                             _fluidGridDimensions.x * _fluidGridDimensions.y *
+                                 sizeof(glm::vec2)};
+
+  // Push constants setup (once) PARAMETERS
+  _fluidSimConstants.gridDim = _fluidGridDimensions;
+  _fluidSimConstants.deltaTime = 0.001f; // Adjust as needed
+  _fluidSimConstants.density = 1.0f;
+  _fluidSimConstants.viscosity = 0.001f; // Adjust as needed for Reynolds number
+  _fluidSimConstants.numPressureIterations =
+      50;                                // SOR iterations for Poisson/Pressure
+  _fluidSimConstants.omegaSOR = 1.7f;    // SOR relaxation factor
+  _fluidSimConstants.lidVelocity = 1.0f; // Crucial for driving the flow
+  _fluidSimConstants.h =
+      1.0f / float(_fluidGridDimensions
+                       .x); // Or x-1 if node-centered & dim is node count
+
+  // --- Simulation Cycle ---
+  // Initial state: _fluidVorticityBuffer has initial data. _fluidVelocityBuffer
+  // is zero.
+
+  // 1. Advect Vorticity: ω_new = Advect(ω_old, u, dt)
+  //    Inputs: _fluidVorticityBuffer (ω_old), _fluidVelocityBuffer (u)
+  //    Output: _fluidTempScalarBuffer (ω_new_temp)
+  //    Shader: _advectionPipeline
+  run_compute_pass(_advectionPipeline);
+  create_barrier(VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                 VK_ACCESS_2_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                 VK_ACCESS_2_TRANSFER_READ_BIT);
+  vkCmdCopyBuffer(cmd, _fluidTempScalarBuffer.buffer,
+                  _fluidVorticityBuffer.buffer, 1, &copyRegionScalar);
+  create_barrier(
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
+      VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT);
+
+  // 2. Solve Poisson for Stream Function: ∇²ψ = -ω
+  //    Inputs: _fluidVorticityBuffer (ω)
+  //    Output: _fluidStreamFunctionBuffer (ψ) (via _fluidTempScalarBuffer)
+  //    Shader: _poissonPipeline
+  for (int i = 0; i < _fluidSimConstants.numPressureIterations; ++i) {
+    run_compute_pass(_poissonPipeline);
+    create_barrier(
+        VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
+        VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT);
+    vkCmdCopyBuffer(cmd, _fluidTempScalarBuffer.buffer,
+                    _fluidStreamFunctionBuffer.buffer, 1, &copyRegionScalar);
+    // For next SOR iteration, make _fluidStreamFunctionBuffer readable by
+    // compute
+    if (i < _fluidSimConstants.numPressureIterations - 1) {
+      create_barrier(
+          VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
+          VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT);
+    }
+  }
+  // After loop, ensure _fluidStreamFunctionBuffer is ready for the
+  // _velocityPipeline
+  create_barrier(
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
+      VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT);
+
+  // 3. Calculate Velocity from Stream Function: u = ∇×ψ
+  //    Inputs: _fluidStreamFunctionBuffer (ψ)
+  //    Output: _fluidVelocityBuffer (u) (via _fluidTempVecBuffer)
+  //    Shader: _velocityPipeline
+  run_compute_pass(_velocityPipeline);
+  create_barrier(VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                 VK_ACCESS_2_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                 VK_ACCESS_2_TRANSFER_READ_BIT);
+  vkCmdCopyBuffer(cmd, _fluidTempVecBuffer.buffer, _fluidVelocityBuffer.buffer,
+                  1, &copyRegionVec);
+  // Make _fluidVelocityBuffer ready for next advection step or
+  // _vorticityPipeline
+  create_barrier(
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
+      VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT);
+
+  // 4. (Optional but often important) Update Vorticity from Velocity (ω = ∇×u),
+  // especially for boundaries
+  //    Inputs: _fluidVelocityBuffer (u)
+  //    Output: _fluidVorticityBuffer (ω) (via _fluidTempScalarBuffer)
+  //    Shader: _vorticityPipeline
+  //    This step ensures ω is consistent with u and applies boundary conditions
+  //    for ω derived from u.
+  run_compute_pass(_vorticityPipeline);
+  create_barrier(VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                 VK_ACCESS_2_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                 VK_ACCESS_2_TRANSFER_READ_BIT);
+  vkCmdCopyBuffer(cmd, _fluidTempScalarBuffer.buffer,
+                  _fluidVorticityBuffer.buffer, 1, &copyRegionScalar);
+  // Make _fluidVorticityBuffer ready for next advection step or pressure solve
+  create_barrier(
+      VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
+      VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT);
+
+  // 5. Optional Pressure Pass (if needed for visualization or other physics)
+  //    Usually, for incompressible flow, pressure ensures ∇·u = 0.
+  //    In vorticity-streamfunction, this is implicitly handled if ψ is solved
+  //    correctly. This pressure pass might be for deriving P from u,v (e.g.,
+  //    solving ∇²P = -∇·(u·∇u)).
+  if (_pressurePipeline != VK_NULL_HANDLE) {
+    for (int i = 0; i < _fluidSimConstants.numPressureIterations; ++i) {
+      run_compute_pass(_pressurePipeline);
+      create_barrier(
+          VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
+          VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT);
+      vkCmdCopyBuffer(cmd, _fluidTempScalarBuffer.buffer,
+                      _fluidPressureBuffer.buffer, 1, &copyRegionScalar);
+      if (i < _fluidSimConstants.numPressureIterations - 1) {
+        create_barrier(VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+                       VK_ACCESS_2_TRANSFER_WRITE_BIT,
+                       VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+                       VK_ACCESS_2_SHADER_READ_BIT);
+      }
+    }
+    // No barrier needed after final copy if pressure isn't read by compute
+    // immediately after
+  }
 }
 
 void VulkanEngine::simulation_step() {
@@ -568,12 +710,10 @@ void VulkanEngine::simulation_step() {
 void VulkanEngine::run_simulation_loop() {
   bool bQuit = false;
 
-  while (!bQuit) {
+  while (!bQuit && _frameNumber < 1001) {
     simulation_step();
     // Read and print buffer contents
     uint32_t numCells = _fluidGridDimensions.x * _fluidGridDimensions.y;
-    uint32_t printCount =
-        std::min(numCells, 5u); // Print first 5 elements or less
 
     fmt::println("---- Iteration step {} ----", _frameNumber);
 
@@ -581,9 +721,9 @@ void VulkanEngine::run_simulation_loop() {
     std::vector<glm::vec2> velocities =
         read_buffer_to_cpu<glm::vec2>(_fluidVelocityBuffer, numCells);
 
-    // Density Buffer
-    std::vector<float> densities =
-        read_buffer_to_cpu<float>(_fluidDensityBuffer, numCells);
+    // Vorticity Buffer
+    std::vector<float> vorticities =
+        read_buffer_to_cpu<float>(_fluidVorticityBuffer, numCells);
 
     // Pressure Buffer
     std::vector<float> pressures =
@@ -599,7 +739,7 @@ void VulkanEngine::run_simulation_loop() {
     if (_frameNumber % 10 == 0) { // Example: output every 10 frames
       write_buffer_to_vtk<glm::vec2>(_fluidVelocityBuffer, "Velocity",
                                      "cavity_sim");
-      write_buffer_to_vtk<float>(_fluidDensityBuffer, "Vorticity",
+      write_buffer_to_vtk<float>(_fluidVorticityBuffer, "Vorticity",
                                  "cavity_sim");
       write_buffer_to_vtk<float>(_fluidStreamFunctionBuffer, "StreamFunction",
                                  "cavity_sim");

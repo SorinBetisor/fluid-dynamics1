@@ -1,0 +1,61 @@
+#version 450
+layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
+
+layout(set = 0, binding = 0) readonly buffer VelocityBuffer {
+    vec2 velocities[];
+};
+layout(set = 0, binding = 1) readonly buffer VorticityBuffer {
+    float vorticity[];
+};
+layout(set = 0, binding = 4) writeonly buffer TempScalarBuffer {
+    float tempScalar[];
+};
+
+layout(push_constant) uniform PushConstants {
+    uvec2 gridDim; // Grid dimensions (width, height)
+    float deltaTime; // Time step Δt
+    float density; // Fluid density ρ (not directly used if viscosity is kinematic)
+    float viscosity; // Kinematic viscosity ν
+    int numPressureIterations; // Iterations for Poisson solver (max_it for ψ)
+    int numOverallIterations; // Total simulation steps (unused in this shader)
+    float omegaSOR; // Relaxation factor for SOR in Poisson solver (ω_SOR)
+    float lidVelocity; // Velocity of the top lid (U0)
+    float h; // Cell size (Δx = Δy = h)
+} pc;
+
+void main() {
+    ivec2 ij = ivec2(gl_GlobalInvocationID.xy);
+    uint W = pc.gridDim.x;
+    uint H = pc.gridDim.y;
+    uint idx = ij.y * W + ij.x;
+
+    // Copy boundaries straight through
+    if (ij.x == 0 || ij.y == 0 || ij.x >= int(W) - 1 || ij.y >= int(H) - 1) {
+        tempScalar[idx] = vorticity[idx];
+        return;
+    }
+
+    uint ip = idx + 1;
+    uint im = idx - 1;
+    uint jp = idx + W;
+    uint jm = idx - W;
+
+    float w = vorticity[idx];
+    float u = velocities[idx].x;
+    float v = velocities[idx].y;
+
+    // First derivatives
+    float dw_dx = (vorticity[ip] - vorticity[im]) * (0.5 / pc.h);
+    float dw_dy = (vorticity[jp] - vorticity[jm]) * (0.5 / pc.h);
+
+    // Second derivatives
+    float d2w_dx2 = (vorticity[ip] + vorticity[im] - 2.0 * w) / (pc.h * pc.h);
+    float d2w_dy2 = (vorticity[jp] + vorticity[jm] - 2.0 * w) / (pc.h * pc.h);
+
+    // Explicit Euler step
+    tempScalar[idx] = w
+            + pc.deltaTime * (
+                -(u * dw_dx + v * dw_dy)
+                    + pc.viscosity * (d2w_dx2 + d2w_dy2)
+                );
+}
