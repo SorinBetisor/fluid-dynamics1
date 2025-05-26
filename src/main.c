@@ -139,19 +139,19 @@ int main(int argc, char *argv[])
     printf("Poisson SOR parameter: %lf\n", beta);
     printf("Adding circular object at (%.2f, %.2f) with radius %.2f\n", center_x, center_y, radius);
 
-    // Boundary conditions (Dirichlet)
+    // Boundary conditions (Dirichlet) - Lid-driven cavity
     double ui = 0.; // internal field for u
     double vi = 0.; // internal field for v
 
-    double u1 = 0.; // right boundary condition
-    double u2 = 0.; // left boundary condition
-    double u3 = 0.; // bottom boundary condition
-    double u4 = 1.; // top boundary condition
+    double u_bottom = 0.;  // bottom boundary condition
+    double u_top = 1.;     // top boundary condition (lid velocity)
+    double u_left = 0.;    // left boundary condition
+    double u_right = 0.;   // right boundary condition
 
-    double v1 = 0.;
-    double v2 = 0.;
-    double v3 = 0.;
-    double v4 = 0.;
+    double v_bottom = 0.;  // bottom boundary condition
+    double v_top = 0.;     // top boundary condition
+    double v_left = 0.;    // left boundary condition
+    double v_right = 0.;   // right boundary condition
 
     // Computes cell sizes
     double dx = (double)Lx / nx;
@@ -203,8 +203,8 @@ int main(int argc, char *argv[])
     int it_max = (int)((tf / dt) - 1);
 
     // Courant numbers
-    double r1 = u1 * dt / (dx);
-    double r2 = u1 * dt / (dy);
+    double r1 = u_top * dt / (dx);
+    double r2 = u_top * dt / (dy);
 
     if ((r1 > max_co) || (r2 > max_co))
     {
@@ -233,7 +233,6 @@ int main(int argc, char *argv[])
     }
 
     // Derivatives
-    // mtrx p;   // pressure
     mtrx dwdx;             // vorticity x-derivative
     mtrx dwdy;             // vorticity y-derivative
     mtrx d2wdx2;           // vorticity x-derivative (2nd)
@@ -262,14 +261,16 @@ int main(int argc, char *argv[])
     mtrx dvdx0;
     mtrx dvdy0;
 
-    // Initial condition
+    // Initial condition - all velocities start at zero
     #pragma omp parallel for private(j) if(use_omp)
-    for (i = 1; i < nx - 1; i++)
+    for (i = 0; i < nx; i++)
     {
-        for (j = 1; j < ny - 1; j++)
+        for (j = 0; j < ny; j++)
         {
             u.M[i][j] = ui;
             v.M[i][j] = vi;
+            w.M[i][j] = 0.0;  // Initialize vorticity to zero
+            psi.M[i][j] = 0.0; // Initialize stream function to zero
         }
     }
 
@@ -282,25 +283,25 @@ int main(int argc, char *argv[])
     {
         start_time = omp_get_wtime();
         
-        // Initialize variables
-
-        // Boundary conditions
+        // Apply boundary conditions for velocities (lid-driven cavity)
         #pragma omp parallel for if(use_omp)
         for (j = 0; j < ny; j++)
         {
-            v.M[0][j] = v3;
-            v.M[nx - 1][j] = v4;
-            u.M[0][j] = u3;
-            u.M[nx - 1][j] = u4;
+            // Left and right walls (no-slip)
+            u.M[0][j] = u_left;
+            u.M[nx - 1][j] = u_right;
+            v.M[0][j] = v_left;
+            v.M[nx - 1][j] = v_right;
         }
         
         #pragma omp parallel for if(use_omp)
         for (i = 0; i < nx; i++)
         {
-            v.M[i][0] = v1;
-            v.M[i][ny - 1] = v2;
-            u.M[i][0] = u1;
-            u.M[i][ny - 1] = u2;
+            // Bottom and top walls
+            u.M[i][0] = u_bottom;      // Bottom wall (no-slip)
+            u.M[i][ny - 1] = u_top;    // Top wall (moving lid)
+            v.M[i][0] = v_bottom;      // Bottom wall (no-slip)
+            v.M[i][ny - 1] = v_top;    // Top wall (no-slip in v)
         }
 
         // Apply no-slip condition on the object boundary
@@ -314,6 +315,10 @@ int main(int argc, char *argv[])
             }
         }
 
+        // Compute vorticity at boundaries using finite differences
+        // This is critical for proper lid-driven cavity simulation
+        
+        // Compute velocity derivatives for vorticity calculation
         u0 = reshape(u, nx * ny, 1);
         v0 = reshape(v, nx * ny, 1);
         dudy0 = mtrxmul(DY, u0);
@@ -322,26 +327,50 @@ int main(int argc, char *argv[])
         dudy = reshape(dudy0, nx, ny);
         dvdx = reshape(dvdx0, nx, ny);
 
+        // Compute vorticity in the interior and at boundaries
+        #pragma omp parallel for private(j) if(use_omp)
+        for (i = 0; i < nx; i++)
+        {
+            for (j = 0; j < ny; j++)
+            {
+                w.M[i][j] = dvdx.M[i][j] - dudy.M[i][j];
+            }
+        }
+
+        // Apply vorticity boundary conditions for lid-driven cavity
+        // Top wall (moving lid) - special treatment
+        #pragma omp parallel for if(use_omp)
+        for (i = 1; i < nx - 1; i++)
+        {
+            // Top wall vorticity (moving lid creates vorticity)
+            w.M[i][ny - 1] = -2.0 * (psi.M[i][ny - 2] - psi.M[i][ny - 1]) / (dy * dy) - 2.0 * u_top / dy;
+            
+            // Bottom wall vorticity
+            w.M[i][0] = -2.0 * (psi.M[i][1] - psi.M[i][0]) / (dy * dy);
+        }
+        
+        // Left and right wall vorticity
+        #pragma omp parallel for if(use_omp)
+        for (j = 1; j < ny - 1; j++)
+        {
+            w.M[0][j] = -2.0 * (psi.M[1][j] - psi.M[0][j]) / (dx * dx);
+            w.M[nx - 1][j] = -2.0 * (psi.M[nx - 2][j] - psi.M[nx - 1][j]) / (dx * dx);
+        }
+
+        // Corner vorticity
+        w.M[0][0] = 0.5 * (w.M[1][0] + w.M[0][1]);
+        w.M[nx - 1][0] = 0.5 * (w.M[nx - 2][0] + w.M[nx - 1][1]);
+        w.M[0][ny - 1] = 0.5 * (w.M[1][ny - 1] + w.M[0][ny - 2]);
+        w.M[nx - 1][ny - 1] = 0.5 * (w.M[nx - 2][ny - 1] + w.M[nx - 1][ny - 2]);
+
         u0.M = freem(u0);
         v0.M = freem(v0);
         dudy0.M = freem(dudy0);
         dvdx0.M = freem(dvdx0);
+        dudy.M = freem(dudy);
+        dvdx.M = freem(dvdx);
 
-        #pragma omp parallel for if(use_omp)
-        for (j = 0; j < ny; j++)
-        {
-            w.M[0][j] = dvdx.M[0][j] - dudy.M[0][j];
-            w.M[nx - 1][j] = dvdx.M[nx - 1][j] - dudy.M[nx - 1][j];
-        }
-        
-        #pragma omp parallel for if(use_omp)
-        for (i = 0; i < nx; i++)
-        {
-            w.M[i][0] = dvdx.M[i][0] - dudy.M[i][0];
-            w.M[i][ny - 1] = dvdx.M[i][ny - 1] - dudy.M[i][ny - 1];
-        }
-
-        // Computes derivatives
+        // Computes vorticity derivatives for time advancement
         w0 = reshape(w, nx * ny, 1);
         dwdx0 = mtrxmul(DX, w0);
         dwdy0 = mtrxmul(DY, w0);
@@ -362,13 +391,13 @@ int main(int argc, char *argv[])
         d2wdy20.M = freem(d2wdy20);
         w0.M = freem(w0);
 
-        // Time - advancement(Euler) with OpenMP parallelization
+        // Time advancement (Euler) with OpenMP parallelization
         #pragma omp parallel if(use_omp)
         {
             euler_parallel(w, dwdx, dwdy, d2wdx2, d2wdy2, u, v, Re, dt);
         }
 
-        // Set vorticity inside solid to avoid updating it
+        // Set vorticity inside solid to zero
         #pragma omp parallel for private(j) if(use_omp)
         for (i = 0; i < nx; i++) {
             for (j = 0; j < ny; j++) {
@@ -378,7 +407,7 @@ int main(int argc, char *argv[])
             }
         }
 
-        // Solves poisson equation for stream function
+        // Solves Poisson equation for stream function
         psi.M = freem(psi);
         invsig(w);
         
@@ -415,7 +444,7 @@ int main(int argc, char *argv[])
 
         invsig(w);
 
-        // Computes velocities
+        // Computes velocities from stream function
         psi0 = reshape(psi, nx * ny, 1);
         dpsidx0 = mtrxmul(DX, psi0);
         dpsidy0 = mtrxmul(DY, psi0);
@@ -431,9 +460,30 @@ int main(int argc, char *argv[])
         v.M = freem(v);
         u = initm(nx, ny);
         v = initm(nx, ny);
+        
+        // u = dpsi/dy, v = -dpsi/dx
         mtrxcpy(u, dpsidy);
         invsig(dpsidx);
         mtrxcpy(v, dpsidx);
+
+        // Apply boundary conditions again after velocity update
+        #pragma omp parallel for if(use_omp)
+        for (j = 0; j < ny; j++)
+        {
+            u.M[0][j] = u_left;
+            u.M[nx - 1][j] = u_right;
+            v.M[0][j] = v_left;
+            v.M[nx - 1][j] = v_right;
+        }
+        
+        #pragma omp parallel for if(use_omp)
+        for (i = 0; i < nx; i++)
+        {
+            u.M[i][0] = u_bottom;
+            u.M[i][ny - 1] = u_top;
+            v.M[i][0] = v_bottom;
+            v.M[i][ny - 1] = v_top;
+        }
 
         // Apply no-slip condition on the object boundary again
         #pragma omp parallel for private(j) if(use_omp)
@@ -473,16 +523,14 @@ int main(int argc, char *argv[])
 
         if (t % output_interval == 0)
         {
-            // printvtk(psi, "stream-function", outputDir);
+            printvtk(psi, "stream-function", outputDir);
             printvtk(w, "vorticity", outputDir);
             printvtk(u, "x-velocity", outputDir);
             printvtk(v, "y-velocity", outputDir);
             printvtk(obj, "object", outputDir);
-            // printvtk(p, "pressure", outputDir);
         }
 
         // Free memory
-        // freem(p);
         dwdx.M = freem(dwdx);
         dwdy.M = freem(dwdy);
         d2wdx2.M = freem(d2wdx2);
@@ -490,8 +538,6 @@ int main(int argc, char *argv[])
         dpsidx.M = freem(dpsidx);
         dpsidy.M = freem(dpsidy);
         dudx.M = freem(dudx);
-        dudy.M = freem(dudy);
-        dvdx.M = freem(dvdx);
         dvdy.M = freem(dvdy);
         check_continuity.M = freem(check_continuity);
     }
