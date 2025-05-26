@@ -44,12 +44,19 @@ struct FrameData {
 };
 
 struct FluidSimPushConstants {
-  glm::uvec2 gridDim;
-  float deltaTime;
-  float density;
-  float viscosity;
-  int numPressureIterations;
-  int numOverallIterations;
+  glm::uvec2 gridDim; // Grid dimensions (width, height)
+  float deltaTime;    // Time step Δt
+  float density;   // Fluid density ρ (unused in this vorticity-streamfunction
+                   // formulation)
+  float viscosity; // Kinematic viscosity ν
+  int numPressureIterations; // Iterations for Poisson solver (max_it from
+                             // Algorithm 2)
+  int numOverallIterations;  // Total simulation steps (likely for host control,
+                             // unused in this single time-step shader)
+  float omegaSOR;    // Relaxation factor for SOR in Poisson solver (ω_SOR from
+                     // Algorithm 2)
+  float lidVelocity; // Velocity of the top lid (U0)
+  float h;           // Cell size (assuming Δx = Δy = h)
 };
 
 // -------------------------Class----------------------------

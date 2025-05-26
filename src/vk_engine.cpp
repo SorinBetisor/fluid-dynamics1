@@ -469,6 +469,7 @@ void VulkanEngine::init_fluid_simulation_resources() {
     destroy_buffer(_fluidDensityBuffer);
     destroy_buffer(_fluidPressureBuffer);
     destroy_buffer(_fluidStreamFunctionBuffer);
+    destroy_buffer(_fluidTempBuffer);
   });
 }
 
@@ -493,18 +494,45 @@ void VulkanEngine::dispatch_fluid_simulation(VkCommandBuffer cmd) {
                           _fluidSimPipelineLayout, 0, 1,
                           &_fluidSimDescriptorSet, 0, nullptr);
 
-  _fluidSimConstants.gridDim = _fluidGridDimensions;
-  _fluidSimConstants.deltaTime = 0.016f;
-  _fluidSimConstants.density = 1.0f;
-  _fluidSimConstants.viscosity = 0.001f;
-  _fluidSimConstants.numPressureIterations = 20;
-  _fluidSimConstants.numOverallIterations = 1;
+  vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, _fluidSimPipeline);
+  vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_COMPUTE,
+                          _fluidSimPipelineLayout, 0, 1,
+                          &_fluidSimDescriptorSet, 0, nullptr);
+
+  _fluidSimConstants.gridDim = _fluidGridDimensions; // e.g., {128, 128}
+  _fluidSimConstants.deltaTime = 0.001f; // Adjust as needed for stability
+  _fluidSimConstants.density =
+      1.0f; // Nominal density, may not be directly used by shader
+  _fluidSimConstants.viscosity =
+      0.001f; // Kinematic viscosity (ν). For Re=U0*L/ν. If L=1, U0=1, Re=1000.
+  _fluidSimConstants.numPressureIterations =
+      50; // Iterations for Poisson solver for ψ
+  _fluidSimConstants.numOverallIterations = 1; // Unused by this shader
+
+  // For SOR method for Poisson equation ∇²ψ = -ω
+  // Optimal omegaSOR is problem-dependent, typically between 1.0 (Gauss-Seidel)
+  // and 2.0. For lid-driven cavity, values like 1.7-1.9 can be good. Start
+  // with 1.5 or 1.7.
+  _fluidSimConstants.omegaSOR = 1.7f;
+
+  // Lid-driven cavity specific parameters
+  _fluidSimConstants.lidVelocity = 1.0f; // Velocity U0 of the top lid
+  if (_fluidGridDimensions.x > 1) {
+    // Assuming domain is [0,1] x [0,1] or [0,width_units] x [0,height_units]
+    // h = physical_length / (number_of_cells_in_that_direction -1)
+    // For simplicity, if physical length of cavity is 1.0:
+    _fluidSimConstants.h =
+        1.0f / (float)(_fluidGridDimensions.x -
+                       1); // Cell size, assuming square cells and Width=1.0
+  } else {
+    _fluidSimConstants.h = 0.1f; // Default placeholder if grid is tiny
+  }
 
   vkCmdPushConstants(cmd, _fluidSimPipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT,
                      0, sizeof(FluidSimPushConstants), &_fluidSimConstants);
 
-  uint32_t groupSizeX = 16;
-  uint32_t groupSizeY = 16;
+  uint32_t groupSizeX = 16; // Must match local_size_x in shader
+  uint32_t groupSizeY = 16; // Must match local_size_y in shader
   vkCmdDispatch(cmd, (_fluidGridDimensions.x + groupSizeX - 1) / groupSizeX,
                 (_fluidGridDimensions.y + groupSizeY - 1) / groupSizeY, 1);
 }
@@ -547,61 +575,44 @@ void VulkanEngine::run_simulation_loop() {
     uint32_t printCount =
         std::min(numCells, 5u); // Print first 5 elements or less
 
-    fmt::println("---- Frame {} Buffer Contents ----", _frameNumber);
+    fmt::println("---- Iteration step {} ----", _frameNumber);
 
     // Velocity Buffer
     std::vector<glm::vec2> velocities =
         read_buffer_to_cpu<glm::vec2>(_fluidVelocityBuffer, numCells);
-    fmt::println("Velocity Buffer (first {} elements):", printCount);
-    for (uint32_t i = 0; i < printCount; ++i) {
-      if (i < velocities.size()) {
-        fmt::println("  Vel[{}]: ({:.4f}, {:.4f})", i, velocities[i].x,
-                     velocities[i].y);
-      }
-    }
 
     // Density Buffer
     std::vector<float> densities =
         read_buffer_to_cpu<float>(_fluidDensityBuffer, numCells);
-    fmt::println("Density Buffer (first {} elements):", printCount);
-    for (uint32_t i = 0; i < printCount; ++i) {
-      if (i < densities.size()) {
-        fmt::println("  Den[{}]: {:.4f}", i, densities[i]);
-      }
-    }
 
     // Pressure Buffer
     std::vector<float> pressures =
         read_buffer_to_cpu<float>(_fluidPressureBuffer, numCells);
-    fmt::println("Pressure Buffer (first {} elements):", printCount);
-    for (uint32_t i = 0; i < printCount; ++i) {
-      if (i < pressures.size()) {
-        fmt::println("  Prs[{}]: {:.4f}", i, pressures[i]);
-      }
-    }
 
     // Stream Function Buffer
     std::vector<float> streamFuncs =
         read_buffer_to_cpu<float>(_fluidStreamFunctionBuffer, numCells);
-    fmt::println("Stream Function Buffer (first {} elements):", printCount);
-    for (uint32_t i = 0; i < printCount; ++i) {
-      if (i < streamFuncs.size()) {
-        fmt::println("  Stm[{}]: {:.4f}", i, streamFuncs[i]);
-      }
-    }
     fmt::println("---- End of Frame {} ----", _frameNumber);
 
     _frameNumber++;
-    // For continuous simulation, remove or control bQuit
-    // if (_frameNumber > 10) bQuit = true; // Example: run for 10 frames then
-    // quit
+
+    if (_frameNumber % 10 == 0) { // Example: output every 10 frames
+      write_buffer_to_vtk<glm::vec2>(_fluidVelocityBuffer, "Velocity",
+                                     "cavity_sim");
+      write_buffer_to_vtk<float>(_fluidDensityBuffer, "Vorticity",
+                                 "cavity_sim");
+      write_buffer_to_vtk<float>(_fluidStreamFunctionBuffer, "StreamFunction",
+                                 "cavity_sim");
+      write_buffer_to_vtk<float>(_fluidPressureBuffer, "Pressure",
+                                 "cavity_sim");
+    }
   }
 }
 
 template <typename T>
-void VulkanEngine::write_buffer_to_vtk(
-    const AllocatedBuffer &gpuBuffer, const std::string &dataName,
-    const std::string &baseFilename) { // Untested
+void VulkanEngine::write_buffer_to_vtk(const AllocatedBuffer &gpuBuffer,
+                                       const std::string &dataName,
+                                       const std::string &baseFilename) {
   if (!_isInitialized) {
     std::cerr << "VulkanEngine not initialized, cannot write VTK for "
               << dataName << "." << std::endl;
@@ -649,7 +660,7 @@ void VulkanEngine::write_buffer_to_vtk(
 
   std::string filename = outputDir + "/" + baseFilename + "_" + dataName + "_" +
                          std::to_string(_frameNumber) + ".vtk";
-  std::ofstream vtkFile;
+  std::ofstream vtkFile(filename);
 
   if (!vtkFile.is_open()) {
     std::cerr << "Error: Could not open VTK file for writing: " << filename
@@ -670,6 +681,13 @@ void VulkanEngine::write_buffer_to_vtk(
           << " 1\n";            // nx ny nz
   vtkFile << "ORIGIN 0 0 0\n";  // Assuming origin is 0,0,0 for simplicity
   vtkFile << "SPACING 1 1 1\n"; // Assuming unit spacing for simplicity
+  float spacing_h =
+      _fluidSimConstants.h; // Get h from where it's stored/calculated
+  if (spacing_h <= 0.0f)
+    spacing_h = 1.0f; // Fallback if h is not set
+  vtkFile << "ORIGIN 0 0 0\n";
+  vtkFile << "SPACING " << std::fixed << std::setprecision(6) << spacing_h
+          << " " << spacing_h << " " << spacing_h << "\n";
 
   vtkFile << "POINT_DATA " << totalPoints << "\n";
 
