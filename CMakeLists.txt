@@ -11,11 +11,14 @@ file(GLOB SOURCES
      "${CMAKE_SOURCE_DIR}/src/*.c"
 )
 
-# Initially disable GPU acceleration and OpenMP for Windows build
-add_definitions(-DDISABLE_GPU -DDISABLE_VULKAN -DDISABLE_OPENMP)
+# Initially disable GPU acceleration for Windows build, but try to enable OpenMP
+add_definitions(-DDISABLE_GPU -DDISABLE_VULKAN)
 
 # Create output directory
 file(MAKE_DIRECTORY ${CMAKE_SOURCE_DIR}/output)
+
+# Find OpenMP first
+find_package(OpenMP)
 
 # Add executable
 add_executable(cnavier ${SOURCES})
@@ -32,14 +35,13 @@ set_target_properties(cnavier PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_SOURCE_DIR}"
 )
 
-# Find OpenMP if available
-find_package(OpenMP)
+# Configure OpenMP
 if(OpenMP_C_FOUND)
     target_link_libraries(cnavier OpenMP::OpenMP_C)
     message(STATUS "OpenMP found and enabled")
 else()
-    add_definitions(-DDISABLE_OPENMP)
-    message(STATUS "OpenMP not found")
+    target_compile_definitions(cnavier PRIVATE -DDISABLE_OPENMP)
+    message(STATUS "OpenMP not found, disabling")
 endif()
 
 # Copy config.txt to build directory
