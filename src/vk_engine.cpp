@@ -396,14 +396,14 @@ void VulkanEngine::init_fluid_simulation_resources() {
   streamFuncBufferInfo.range = streamFuncBufferSize;
 
   VkDescriptorBufferInfo tempScalarBufferInfo{};
-  streamFuncBufferInfo.buffer = _fluidTempScalarBuffer.buffer;
-  streamFuncBufferInfo.offset = 0;
-  streamFuncBufferInfo.range = tempScalarBufferSize;
+  tempScalarBufferInfo.buffer = _fluidTempScalarBuffer.buffer;
+  tempScalarBufferInfo.offset = 0;
+  tempScalarBufferInfo.range = tempScalarBufferSize;
 
   VkDescriptorBufferInfo tempVecBufferInfo{};
-  streamFuncBufferInfo.buffer = _fluidTempVecBuffer.buffer;
-  streamFuncBufferInfo.offset = 0;
-  streamFuncBufferInfo.range = tempVecBufferSize;
+  tempVecBufferInfo.buffer = _fluidTempVecBuffer.buffer;
+  tempVecBufferInfo.offset = 0;
+  tempVecBufferInfo.range = tempVecBufferSize;
 
   VkWriteDescriptorSet writes[6];
   writes[0] = vkinit::write_descriptor_buffer(VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
