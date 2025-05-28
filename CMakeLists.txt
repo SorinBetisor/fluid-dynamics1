@@ -67,59 +67,6 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(glm)
 
 FetchContent_Declare(
-  SDL3
-  GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
-  GIT_TAG         release-3.2.10  # refs/tags/3.2.10
-)
-
-FetchContent_MakeAvailable(SDL3)
-
-FetchContent_Declare(
-  imgui
-  GIT_REPOSITORY https://github.com/ocornut/imgui.git
-  GIT_TAG        v1.91.9b                                  
-)
-
-FetchContent_GetProperties(imgui)
-
-if(NOT imgui_POPULATED)
-  FetchContent_Populate(imgui)
-
-  add_library(ImGui STATIC
-    ${imgui_SOURCE_DIR}/imgui.cpp
-    ${imgui_SOURCE_DIR}/imgui_draw.cpp
-    ${imgui_SOURCE_DIR}/imgui_tables.cpp
-    ${imgui_SOURCE_DIR}/imgui_widgets.cpp
-    ${imgui_SOURCE_DIR}/imgui_demo.cpp
-    ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl3.cpp   
-    ${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp
-  )
-
-  target_include_directories(ImGui PUBLIC
-    ${imgui_SOURCE_DIR}
-    ${imgui_SOURCE_DIR}/backends
-  )
-
-  target_link_libraries(ImGui
-    PUBLIC
-      SDL3::SDL3      # or SDL2::SDL2 if you’re on SDL2
-      Vulkan::Vulkan
-  )
-endif()
-
-FetchContent_MakeAvailable(imgui)
-
-FetchContent_Declare(
-    tinyobjloader
-    GIT_REPOSITORY https://github.com/tinyobjloader/tinyobjloader.git   
-    GIT_TAG        v1.0.6                                             
-)
-
-set(TINYOBJLOADER_USE_DOUBLE OFF CACHE BOOL "Build with double precision" FORCE)
-
-FetchContent_MakeAvailable(tinyobjloader)
-
-FetchContent_Declare(
     fetch_vk_bootstrap
     GIT_REPOSITORY https://github.com/charles-lunarg/vk-bootstrap
     GIT_TAG        v1.3.296
@@ -127,7 +74,6 @@ FetchContent_Declare(
 
 FetchContent_MakeAvailable(fetch_vk_bootstrap)
 
-include(FetchContent)
 FetchContent_Declare(
   fmt
   GIT_REPOSITORY https://github.com/fmtlib/fmt.git
@@ -135,14 +81,6 @@ FetchContent_Declare(
 )
 
 FetchContent_MakeAvailable(fmt)
-
-FetchContent_Declare(
-  fastgltf
-  GIT_REPOSITORY https://github.com/spnda/fastgltf.git
-  GIT_TAG        v0.8.0
-)
-
-FetchContent_MakeAvailable(fastgltf)
 
 # Collect source files
 file(GLOB_RECURSE SOURCES
@@ -163,11 +101,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 target_link_libraries(${PROJECT_NAME}
     PRIVATE
         fmt::fmt
-        fastgltf
-        ImGui
         glm::glm
-        SDL3::SDL3
-        tinyobjloader
         vk-bootstrap::vk-bootstrap
         Vulkan::Vulkan 
 )

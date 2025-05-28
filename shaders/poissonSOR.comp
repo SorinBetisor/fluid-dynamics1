@@ -29,5 +29,24 @@ void main() {
     uint H = pc.gridDim.y;
     uint idx = ij.y * W + ij.x;
 
-    tempScalar[idx] = 3;
+    // Dirichlet ψ=0 on boundary
+    if (ij.x == 0 || ij.y == 0 || ij.x >= int(W) - 1 || ij.y >= int(H) - 1) {
+        tempScalar[idx] = 0.0;
+        return;
+    }
+
+    uint ip = idx + 1;
+    uint im = idx - 1;
+    uint jp = idx + W;
+    uint jm = idx - W;
+
+    float psiC = streamFuncScalars[idx];
+    float sumNbrs = streamFuncScalars[ip]
+            + streamFuncScalars[im]
+            + streamFuncScalars[jp]
+            + streamFuncScalars[jm];
+    float target = 0.25 * (sumNbrs + pc.h * pc.h * (-vorticity[idx]));
+    // SOR update
+    tempScalar[idx] = mix(psiC, target, pc.omegaSOR);
+    // tempScalar[idx] = 3;
 }

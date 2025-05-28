@@ -142,22 +142,9 @@ void VulkanEngine::init_vulkan() {
   _instance = vkb_inst.instance;
   _debug_messenger = vkb_inst.debug_messenger;
 
-  VkPhysicalDeviceVulkan13Features features13 = {};
-  features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
-  features13.synchronization2 = true;
-  features13.dynamicRendering = true;
-
-  VkPhysicalDeviceVulkan12Features features12 = {};
-  features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-  features12.descriptorIndexing = true;
-  features12.bufferDeviceAddress = true;
-
   vkb::PhysicalDeviceSelector selector{vkb_inst};
-  auto physDevice_ret = selector.set_minimum_version(1, 3)
-                            .set_required_features_13(features13)
-                            .set_required_features_12(features12)
-                            .require_present(false)
-                            .select();
+  auto physDevice_ret =
+      selector.set_minimum_version(1, 3).require_present(false).select();
 
   if (!physDevice_ret) {
     fmt::println(stderr, "Failed to select Vulkan Physical Device: {}",
@@ -710,7 +697,7 @@ void VulkanEngine::simulation_step() {
 void VulkanEngine::run_simulation_loop() {
   bool bQuit = false;
 
-  while (!bQuit && _frameNumber < 1001) {
+  while (!bQuit && _frameNumber < 10) {
     simulation_step();
     // Read and print buffer contents
     uint32_t numCells = _fluidGridDimensions.x * _fluidGridDimensions.y;
