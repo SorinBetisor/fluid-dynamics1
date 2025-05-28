@@ -1,0 +1,55 @@
+This is a standart run (with no parallelization or hpc techniques whatsoever), with the config:
+
+# Fluid Dynamics Simulation Configuration File
+# Lines starting with # or ; are comments
+# Format: parameter_name = value
+
+# ===== Physical Parameters =====
+# Reynolds number - controls the flow regime
+Re = 1000.0
+
+# Domain dimensions
+Lx = 1
+Ly = 1
+
+# ===== Numerical Parameters =====
+# Grid resolution
+nx = 64
+ny = 64
+
+# Time stepping
+dt = 0.005
+tf = 20.0
+
+# Stability and solver parameters
+max_co = 1.0
+order = 6
+
+# Poisson equation solver settings
+poisson_max_it = 10000
+poisson_tol = 1E-3
+poisson_type = 2
+
+# Output settings
+output_interval = 10
+
+# ===== Boundary Conditions =====
+# Internal field initial values
+ui = 0.0
+vi = 0.0
+
+# Velocity boundary conditions
+# u1 = right boundary, u2 = left boundary
+# u3 = bottom boundary, u4 = top boundary
+u1 = 0.0
+u2 = 0.0
+u3 = 0.0
+u4 = 1.0
+
+# v boundary conditions
+v1 = 0.0
+v2 = 0.0
+v3 = 0.0
+v4 = 0.0 
+
+This is computing only vorticity.

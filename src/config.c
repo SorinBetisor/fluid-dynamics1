@@ -29,9 +29,6 @@ Config load_default_config(void) {
     config.output_interval = 10;
     config.poisson_type = 2;
     
-    // Output settings
-    strcpy(config.output_dir, "./output");
-    
     // Boundary conditions (Dirichlet)
     config.ui = 0.0;
     config.vi = 0.0;
@@ -119,11 +116,6 @@ Config load_config_from_file(const char* filename) {
             } else if (strcmp(key_trimmed, "poisson_type") == 0) {
                 config.poisson_type = atoi(value_trimmed);
             }
-            // Output settings
-            else if (strcmp(key_trimmed, "output_dir") == 0) {
-                strncpy(config.output_dir, value_trimmed, sizeof(config.output_dir) - 1);
-                config.output_dir[sizeof(config.output_dir) - 1] = '\0';
-            }
             // Boundary conditions
             else if (strcmp(key_trimmed, "ui") == 0) {
                 config.ui = atof(value_trimmed);
@@ -174,7 +166,6 @@ void print_config(const Config* config) {
     printf("  Poisson tolerance: %.2E\n", config->poisson_tol);
     printf("  Output interval: %d\n", config->output_interval);
     printf("  Poisson solver type: %d\n", config->poisson_type);
-    printf("  Output directory: %s\n", config->output_dir);
     
     printf("\nBoundary Conditions:\n");
     printf("  Internal u field (ui): %.2f\n", config->ui);
@@ -199,17 +190,10 @@ void print_config(const Config* config) {
 }
 
 void print_usage(const char* program_name) {
-    printf("Usage: %s [config_file] [output_subfolder]\n", program_name);
+    printf("Usage: %s [config_file]\n", program_name);
     printf("\nOptions:\n");
-    printf("  config_file       Path to configuration file (optional)\n");
-    printf("                    If not provided, default values will be used\n");
-    printf("  output_subfolder  Name of subfolder inside ./output/ for VTK files (optional)\n");
-    printf("                    If not provided, files will be saved to ./output/\n");
-    printf("\nExamples:\n");
-    printf("  %s                           # Use defaults, save to ./output/\n", program_name);
-    printf("  %s config.txt               # Use config.txt, save to ./output/\n", program_name);
-    printf("  %s config.txt run1          # Use config.txt, save to ./output/run1/\n", program_name);
-    printf("  %s config_high_re.txt turbulent  # High Re config, save to ./output/turbulent/\n", program_name);
+    printf("  config_file    Path to configuration file (optional)\n");
+    printf("                 If not provided, default values will be used\n");
     printf("\nConfiguration file format:\n");
     printf("  # Comments start with # or ;\n");
     printf("  parameter_name = value\n");
@@ -228,21 +212,4 @@ void print_usage(const char* program_name) {
     printf("  # Boundary conditions\n");
     printf("  u4 = 1.0  # top boundary velocity\n");
     printf("\nFor a complete list of parameters, run with --help-config\n");
-}
-
-void set_output_directory(Config* config, const char* subfolder) {
-    if (subfolder == NULL || strlen(subfolder) == 0) {
-        strcpy(config->output_dir, "./output");
-        return;
-    }
-    
-    // Create the output path: ./output/subfolder
-    snprintf(config->output_dir, sizeof(config->output_dir), "./output/%s", subfolder);
-    
-    // Remove any trailing slashes
-    int len = strlen(config->output_dir);
-    while (len > 0 && (config->output_dir[len-1] == '/' || config->output_dir[len-1] == '\\')) {
-        config->output_dir[len-1] = '\0';
-        len--;
-    }
 } 

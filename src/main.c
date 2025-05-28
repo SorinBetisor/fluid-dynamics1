@@ -58,11 +58,6 @@ int main(int argc, char *argv[])
             // Load configuration from file
             config = load_config_from_file(argv[1]);
         }
-    } else if (argc == 3) {
-        // Load configuration from file and set custom output directory
-        config = load_config_from_file(argv[1]);
-        set_output_directory(&config, argv[2]);
-        printf("Using custom output directory: %s\n", config.output_dir);
     } else {
         printf("Error: Too many arguments.\n");
         print_usage(argv[0]);
@@ -329,11 +324,11 @@ int main(int argc, char *argv[])
 
         if (t % output_interval == 0)
         {
-            // printvtk(psi, "stream-function", config.output_dir);
-            printvtk(w, "vorticity", config.output_dir);
-            // printvtk(u, "x-velocity", config.output_dir);
-            // printvtk(v, "y-velocity", config.output_dir);
-            // printvtk(p, "pressure", config.output_dir);
+            // printvtk(psi, "stream-function");
+            printvtk(w, "vorticity");
+            // printvtk(u, "x-velocity");
+            // printvtk(v, "y-velocity");
+            // printvtk(p, "pressure");
         }
 
         // Free memory

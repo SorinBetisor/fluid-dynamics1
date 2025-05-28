@@ -1,11 +1,5 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include <string.h>
-#include <sys/stat.h>
-#ifdef _WIN32
-#include <direct.h>
-#define mkdir(path, mode) _mkdir(path)
-#endif
 #include "linearalg.h"
 #include "utils.h"
 
@@ -16,27 +10,12 @@ double randdouble(double min, double max)
     return min + (rand() / div);
 }
 
-int create_directory(const char *path) {
-    struct stat st = {0};
-    
-    if (stat(path, &st) == -1) {
-        #ifdef _WIN32
-        if (_mkdir(path) != 0) {
-        #else
-        if (mkdir(path, 0755) != 0) {
-        #endif
-            return -1; // Failed to create directory
-        }
-    }
-    return 0; // Directory exists or was created successfully
-}
-
-void printvtk(mtrx A, char *title, const char *output_dir)
+void printvtk(mtrx A, char *title)
 {
     int i, j;
     char c[320];
     static int count = 0;
-    char name[512];
+    char name[64];
     FILE *pf;
 
     if (A.M == NULL)
@@ -50,17 +29,11 @@ void printvtk(mtrx A, char *title, const char *output_dir)
         exit(1);
     }
 
-    // Create the output directory if it doesn't exist
-    if (create_directory(output_dir) != 0) {
-        printf("Warning: Could not create output directory %s\n", output_dir);
-    }
-
-    // Create the full file path
-    snprintf(name, sizeof(name), "%s/%s-1-%d.vtk", output_dir, title, count);
+    snprintf(name, sizeof(name), "./output/%s-1-%d.vtk", title, count);
 
     if ((pf = fopen(name, "a")) == NULL)
     {
-        printf("\nError while opening file %s\n", name);
+        printf("\nError while opening file\n");
         exit(1);
     }
 
