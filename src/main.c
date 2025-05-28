@@ -8,45 +8,100 @@
 #include "utils.h"
 #include "poisson.h"
 #include "fluiddyn.h"
+#include "config.h"
 
 int main(int argc, char *argv[])
 {
     // srand(time(NULL));
     int i, j, t;
+    Config config;
 
-    // Physical parameters
-    double Re = 1000.; // Reynolds number
-    int Lx = 1;        // length
-    int Ly = 1;        // width
+    // Parse command line arguments
+    if (argc == 1) {
+        // No arguments - use default configuration
+        printf("No configuration file specified. Using default values.\n");
+        config = load_default_config();
+    } else if (argc == 2) {
+        if (strcmp(argv[1], "--help") == 0 || strcmp(argv[1], "-h") == 0) {
+            print_usage(argv[0]);
+            return 0;
+        } else if (strcmp(argv[1], "--help-config") == 0) {
+            printf("Complete list of configuration parameters:\n\n");
+            printf("Physical Parameters:\n");
+            printf("  Re           - Reynolds number (default: 1000.0)\n");
+            printf("  Lx           - Domain length (default: 1)\n");
+            printf("  Ly           - Domain width (default: 1)\n");
+            printf("\nNumerical Parameters:\n");
+            printf("  nx           - Grid points in x direction (default: 64)\n");
+            printf("  ny           - Grid points in y direction (default: 64)\n");
+            printf("  dt           - Time step (default: 0.005)\n");
+            printf("  tf           - Final time (default: 20.0)\n");
+            printf("  max_co       - Maximum Courant number (default: 1.0)\n");
+            printf("  order        - Finite difference order (default: 6)\n");
+            printf("  poisson_max_it - Poisson max iterations (default: 10000)\n");
+            printf("  poisson_tol  - Poisson tolerance (default: 1E-3)\n");
+            printf("  output_interval - Output interval for VTK files (default: 10)\n");
+            printf("  poisson_type - Poisson solver type: 1=no relaxation, 2=SOR (default: 2)\n");
+            printf("\nBoundary Conditions:\n");
+            printf("  ui           - Internal u field (default: 0.0)\n");
+            printf("  vi           - Internal v field (default: 0.0)\n");
+            printf("  u1           - Right boundary u (default: 0.0)\n");
+            printf("  u2           - Left boundary u (default: 0.0)\n");
+            printf("  u3           - Bottom boundary u (default: 0.0)\n");
+            printf("  u4           - Top boundary u (default: 1.0)\n");
+            printf("  v1           - Right boundary v (default: 0.0)\n");
+            printf("  v2           - Left boundary v (default: 0.0)\n");
+            printf("  v3           - Bottom boundary v (default: 0.0)\n");
+            printf("  v4           - Top boundary v (default: 0.0)\n");
+            return 0;
+        } else {
+            // Load configuration from file
+            config = load_config_from_file(argv[1]);
+        }
+    } else if (argc == 3) {
+        // Load configuration from file and set custom output directory
+        config = load_config_from_file(argv[1]);
+        set_output_directory(&config, argv[2]);
+        printf("Using custom output directory: %s\n", config.output_dir);
+    } else {
+        printf("Error: Too many arguments.\n");
+        print_usage(argv[0]);
+        return 1;
+    }
 
-    // Numerical parameters
-    int nx = 64;                                                                       // number of points in x direction
-    int ny = 64;                                                                       // number of points in y direction
-    double dt = 0.005;                                                                 // time step
-    double tf = 20;                                                                    // final time
-    double max_co = 1.;                                                                // max Courant number
-    int order = 6;                                                                     // finite difference order for spatial derivatives
-    int poisson_max_it = 10000;                                                        // Poisson equation max number of iterations
-    double poisson_tol = 1E-3;                                                         // Poisson equation criterion for convergence
-    int output_interval = 10;                                                          // Output interval for .vtk files
-    int poisson_type = 2;                                                              // 1 - no relaxation | 2 - successive overrelaxation
-    double beta = 0.5 * (2 / (1 + sin(PI / (nx + 1))) + 2 / (1 + sin(PI / (ny + 1)))); // SOR poisson parameter
+    // Print the configuration being used
+    print_config(&config);
 
+    // Extract configuration values for easier access
+    double Re = config.Re;
+    int Lx = config.Lx;
+    int Ly = config.Ly;
+    int nx = config.nx;
+    int ny = config.ny;
+    double dt = config.dt;
+    double tf = config.tf;
+    double max_co = config.max_co;
+    int order = config.order;
+    int poisson_max_it = config.poisson_max_it;
+    double poisson_tol = config.poisson_tol;
+    int output_interval = config.output_interval;
+    int poisson_type = config.poisson_type;
+    
+    // Boundary conditions
+    double ui = config.ui;
+    double vi = config.vi;
+    double u1 = config.u1;
+    double u2 = config.u2;
+    double u3 = config.u3;
+    double u4 = config.u4;
+    double v1 = config.v1;
+    double v2 = config.v2;
+    double v3 = config.v3;
+    double v4 = config.v4;
+
+    // Calculate SOR parameter (depends on grid size)
+    double beta = 0.5 * (2 / (1 + sin(PI / (nx + 1))) + 2 / (1 + sin(PI / (ny + 1))));
     printf("Poisson SOR parameter: %lf\n", beta);
-
-    // Boundary conditions (Dirichlet)
-    double ui = 0.; // internal field for u
-    double vi = 0.; // internal field for v
-
-    double u1 = 0.; // right boundary condition
-    double u2 = 0.; // left boundary condition
-    double u3 = 0.; // bottom boundary condition
-    double u4 = 1.; // top boundary condition
-
-    double v1 = 0.;
-    double v2 = 0.;
-    double v3 = 0.;
-    double v4 = 0.;
 
     // Computes cell sizes
     double dx = (double)Lx / nx;
@@ -274,11 +329,11 @@ int main(int argc, char *argv[])
 
         if (t % output_interval == 0)
         {
-            // printvtk(psi, "stream-function");
-            printvtk(w, "vorticity");
-            // printvtk(u, "x-velocity");
-            // printvtk(v, "y-velocity");
-            // printvtk(p, "pressure");
+            // printvtk(psi, "stream-function", config.output_dir);
+            printvtk(w, "vorticity", config.output_dir);
+            // printvtk(u, "x-velocity", config.output_dir);
+            // printvtk(v, "y-velocity", config.output_dir);
+            // printvtk(p, "pressure", config.output_dir);
         }
 
         // Free memory
