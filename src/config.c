@@ -1,3 +1,19 @@
+/**
+ * @file config.c
+ * @brief Configuration management system for fluid dynamics simulation
+ * 
+ * This module provides functionality to load and manage simulation parameters
+ * from configuration files or use default values. It supports reading key-value
+ * pairs from text files with comments and provides comprehensive parameter
+ * validation and display.
+ * 
+ * The configuration system allows users to modify simulation parameters without
+ * recompiling the code, making it easy to run different scenarios and experiments.
+ * 
+ * @author Fluid Dynamics Simulation Team
+ * @date 2024
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,41 +25,74 @@
 #define PI 3.14159265359
 #endif
 
+/**
+ * @brief Load default configuration parameters
+ * 
+ * Creates a configuration structure with default values suitable for
+ * a standard lid-driven cavity flow simulation. These values represent
+ * a well-tested configuration that provides stable numerical results.
+ * 
+ * Default configuration:
+ * - Reynolds number: 1000 (moderate turbulence)
+ * - Grid: 64x64 points
+ * - Time step: 0.005 (stable for given grid and Re)
+ * - Simulation time: 20.0 time units
+ * - Lid-driven cavity boundary conditions
+ * 
+ * @return Config structure with default parameters
+ */
 Config load_default_config(void) {
     Config config;
     
     // Physical parameters (default values from original main.c)
-    config.Re = 1000.0;
-    config.Lx = 1;
-    config.Ly = 1;
+    config.Re = 1000.0;     // Reynolds number - controls flow regime
+    config.Lx = 1;          // Domain length (non-dimensional)
+    config.Ly = 1;          // Domain width (non-dimensional)
     
     // Numerical parameters
-    config.nx = 64;
-    config.ny = 64;
-    config.dt = 0.005;
-    config.tf = 20.0;
-    config.max_co = 1.0;
-    config.order = 6;
-    config.poisson_max_it = 10000;
-    config.poisson_tol = 1E-3;
-    config.output_interval = 10;
-    config.poisson_type = 2;
+    config.nx = 64;         // Grid points in x-direction
+    config.ny = 64;         // Grid points in y-direction
+    config.dt = 0.005;      // Time step size
+    config.tf = 20.0;       // Final simulation time
+    config.max_co = 1.0;    // Maximum allowable Courant number
+    config.order = 6;       // Finite difference order (2, 4, or 6)
+    config.poisson_max_it = 10000;  // Maximum Poisson solver iterations
+    config.poisson_tol = 1E-3;      // Poisson solver convergence tolerance
+    config.output_interval = 10;    // VTK output frequency
+    config.poisson_type = 2;        // Poisson solver type (1=basic, 2=SOR)
     
-    // Boundary conditions (Dirichlet)
-    config.ui = 0.0;
-    config.vi = 0.0;
-    config.u1 = 0.0;  // right boundary condition
-    config.u2 = 0.0;  // left boundary condition
-    config.u3 = 0.0;  // bottom boundary condition
-    config.u4 = 1.0;  // top boundary condition
-    config.v1 = 0.0;
-    config.v2 = 0.0;
-    config.v3 = 0.0;
-    config.v4 = 0.0;
+    // Boundary conditions (Dirichlet) - Lid-driven cavity setup
+    config.ui = 0.0;        // Initial internal u-velocity
+    config.vi = 0.0;        // Initial internal v-velocity
+    config.u1 = 0.0;        // Right boundary u-velocity
+    config.u2 = 0.0;        // Left boundary u-velocity
+    config.u3 = 0.0;        // Bottom boundary u-velocity
+    config.u4 = 1.0;        // Top boundary u-velocity (moving lid)
+    config.v1 = 0.0;        // Right boundary v-velocity
+    config.v2 = 0.0;        // Left boundary v-velocity
+    config.v3 = 0.0;        // Bottom boundary v-velocity
+    config.v4 = 0.0;        // Top boundary v-velocity
     
     return config;
 }
 
+/**
+ * @brief Load configuration from a text file
+ * 
+ * Reads simulation parameters from a configuration file in key=value format.
+ * The function starts with default values and overwrites them with values
+ * found in the file. This ensures that missing parameters don't cause errors.
+ * 
+ * File format:
+ * - Lines starting with # or ; are treated as comments
+ * - Empty lines are ignored
+ * - Parameters are specified as: parameter_name = value
+ * - Whitespace around = is ignored
+ * - Unknown parameters generate warnings but don't stop execution
+ * 
+ * @param filename Path to the configuration file
+ * @return Config structure with loaded parameters (defaults used for missing values)
+ */
 Config load_config_from_file(const char* filename) {
     Config config = load_default_config(); // Start with defaults
     FILE* file;
@@ -51,6 +100,7 @@ Config load_config_from_file(const char* filename) {
     char key[64];
     char value[64];
     
+    // Attempt to open the configuration file
     file = fopen(filename, "r");
     if (file == NULL) {
         printf("Error: Could not open configuration file '%s'\n", filename);
@@ -60,6 +110,7 @@ Config load_config_from_file(const char* filename) {
     
     printf("Loading configuration from: %s\n", filename);
     
+    // Parse file line by line
     while (fgets(line, sizeof(line), file)) {
         // Skip empty lines and comments
         if (line[0] == '\n' || line[0] == '#' || line[0] == ';') {
@@ -148,6 +199,20 @@ Config load_config_from_file(const char* filename) {
     return config;
 }
 
+/**
+ * @brief Print current configuration to console
+ * 
+ * Displays all configuration parameters in a formatted, human-readable way.
+ * Also calculates and displays derived parameters such as grid spacing,
+ * SOR parameter, and maximum iterations for user reference.
+ * 
+ * This function is useful for:
+ * - Verifying loaded configuration
+ * - Debugging simulation setup
+ * - Recording simulation parameters in output logs
+ * 
+ * @param config Pointer to configuration structure to display
+ */
 void print_config(const Config* config) {
     printf("\n=== Simulation Configuration ===\n");
     printf("Physical Parameters:\n");
@@ -175,7 +240,7 @@ void print_config(const Config* config) {
     printf("  v boundaries (v1,v2,v3,v4): %.2f, %.2f, %.2f, %.2f\n", 
            config->v1, config->v2, config->v3, config->v4);
     
-    // Calculate derived parameters
+    // Calculate derived parameters for user information
     double dx = (double)config->Lx / config->nx;
     double dy = (double)config->Ly / config->ny;
     double beta = 0.5 * (2 / (1 + sin(PI / (config->nx + 1))) + 2 / (1 + sin(PI / (config->ny + 1))));
@@ -189,6 +254,18 @@ void print_config(const Config* config) {
     printf("================================\n\n");
 }
 
+/**
+ * @brief Print usage information for the program
+ * 
+ * Displays comprehensive help information including:
+ * - Command line syntax
+ * - Available options
+ * - Configuration file format
+ * - Example configuration entries
+ * - References to additional help
+ * 
+ * @param program_name Name of the executable (typically argv[0])
+ */
 void print_usage(const char* program_name) {
     printf("Usage: %s [config_file]\n", program_name);
     printf("\nOptions:\n");
