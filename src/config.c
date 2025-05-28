@@ -100,7 +100,7 @@ Config load_config_from_file(const char* filename) {
     char key[64];
     char value[64];
     
-    // Attempt to open the configuration file
+    // Attempt to open the configuration file 2
     file = fopen(filename, "r");
     if (file == NULL) {
         printf("Error: Could not open configuration file '%s'\n", filename);
