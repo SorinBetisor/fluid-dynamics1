@@ -1,4 +1,5 @@
 #include "execPath.h"
+#include "glm/ext/vector_float2.hpp"
 #include <cstddef>
 #include <cstring>
 #include <filesystem>
@@ -142,9 +143,20 @@ void VulkanEngine::init_vulkan() {
   _instance = vkb_inst.instance;
   _debug_messenger = vkb_inst.debug_messenger;
 
+  VkPhysicalDeviceVulkan13Features features13 = {};
+  features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+  features13.synchronization2 = true;
+
+  VkPhysicalDeviceVulkan12Features features12 = {};
+  features12.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+  features12.bufferDeviceAddress = true;
+
   vkb::PhysicalDeviceSelector selector{vkb_inst};
-  auto physDevice_ret =
-      selector.set_minimum_version(1, 3).require_present(false).select();
+  auto physDevice_ret = selector.set_minimum_version(1, 3)
+                            .set_required_features_13(features13)
+                            .set_required_features_12(features12)
+                            .require_present(false)
+                            .select();
 
   if (!physDevice_ret) {
     fmt::println(stderr, "Failed to select Vulkan Physical Device: {}",
@@ -311,33 +323,41 @@ void VulkanEngine::init_fluid_simulation_resources() {
                                           VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                                       VMA_MEMORY_USAGE_GPU_ONLY);
 
-  std::vector<float> initialVorticities(numCells, 0.0f);
-  for (uint32_t y = _fluidGridDimensions.y / 4;
-       y < 3 * _fluidGridDimensions.y / 4; ++y) {
-    for (uint32_t x = _fluidGridDimensions.x / 4;
-         x < 3 * _fluidGridDimensions.x / 4; ++x) {
-      if (x > _fluidGridDimensions.x / 2 - 20 &&
-          x < _fluidGridDimensions.x / 2 + 20 &&
-          y > _fluidGridDimensions.y / 2 - 20 &&
-          y < _fluidGridDimensions.y / 2 + 20)
-        initialVorticities[y * _fluidGridDimensions.x + x] = 1.0f;
-    }
-  }
+  std::vector<float> initialScalars(numCells, 0.0f);
+  std::vector<glm::vec2> initialVec2s(numCells, {0.0f, 0.0f});
 
-  AllocatedBuffer stagingVorticityBuffer =
+  AllocatedBuffer stagingScalarBuffer =
       create_buffer(vorticityBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                     VMA_MEMORY_USAGE_CPU_ONLY);
-  memcpy(stagingVorticityBuffer.allocation->GetMappedData(),
-         initialVorticities.data(), vorticityBufferSize);
+  memcpy(stagingScalarBuffer.allocation->GetMappedData(), initialScalars.data(),
+         tempScalarBufferSize);
+  AllocatedBuffer stagingVecBuffer =
+      create_buffer(tempVecBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+                    VMA_MEMORY_USAGE_CPU_ONLY);
+  memcpy(stagingVecBuffer.allocation->GetMappedData(), initialVec2s.data(),
+         vorticityBufferSize);
   immediate_submit([&](VkCommandBuffer cmd) {
     VkBufferCopy copyRegion = {};
     copyRegion.dstOffset = 0;
     copyRegion.srcOffset = 0;
     copyRegion.size = vorticityBufferSize;
-    vkCmdCopyBuffer(cmd, stagingVorticityBuffer.buffer,
+    vkCmdCopyBuffer(cmd, stagingScalarBuffer.buffer,
                     _fluidVorticityBuffer.buffer, 1, &copyRegion);
+    vkCmdCopyBuffer(cmd, stagingScalarBuffer.buffer,
+                    _fluidPressureBuffer.buffer, 1, &copyRegion);
+    vkCmdCopyBuffer(cmd, stagingScalarBuffer.buffer,
+                    _fluidStreamFunctionBuffer.buffer, 1, &copyRegion);
+    vkCmdCopyBuffer(cmd, stagingScalarBuffer.buffer,
+                    _fluidTempScalarBuffer.buffer, 1, &copyRegion);
+
+    copyRegion.size = tempScalarBufferSize;
+    vkCmdCopyBuffer(cmd, stagingVecBuffer.buffer, _fluidVelocityBuffer.buffer,
+                    1, &copyRegion);
+    vkCmdCopyBuffer(cmd, stagingVecBuffer.buffer, _fluidTempVecBuffer.buffer, 1,
+                    &copyRegion);
   });
-  destroy_buffer(stagingVorticityBuffer);
+  destroy_buffer(stagingScalarBuffer);
+  destroy_buffer(stagingVecBuffer);
 
   // Always initialize the global descriptor allocator's pool
   // as this function is called once during engine initialization.
