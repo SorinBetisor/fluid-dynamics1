@@ -23,30 +23,44 @@ layout(push_constant) uniform PushConstants {
     float h; // Cell size (Δx = Δy = h)
 } pc;
 
-void main() {
-    ivec2 ij = ivec2(gl_GlobalInvocationID.xy);
-    uint W = pc.gridDim.x;
-    uint H = pc.gridDim.y;
-    uint idx = ij.y * W + ij.x;
+uint getIndex(uvec2 coord) {
+    return coord.y * pc.gridDim.x + coord.x;
+}
 
-    // Dirichlet ψ=0 on boundary
-    if (ij.x == 0 || ij.y == 0 || ij.x >= int(W) - 1 || ij.y >= int(H) - 1) {
-        tempScalar[idx] = 0.0;
-        return;
+void main() {
+    uvec2 id = gl_GlobalInvocationID.xy;
+    uint current_idx = getIndex(id);
+    float psi_new;
+
+    // Boundary condition: ψ = 0 on all walls
+    if (id.x == 0 || id.x == pc.gridDim.x - 1 || id.y == 0 || id.y == pc.gridDim.y - 1) {
+        psi_new = 0.0;
+    } else {
+        // Interior points: SOR iteration
+        float psi_old = streamFuncScalars[current_idx];
+
+        float psi_xp = streamFuncScalars[getIndex(id + uvec2(1, 0))];
+        float psi_xn = streamFuncScalars[getIndex(id - uvec2(1, 0))];
+        float psi_yp = streamFuncScalars[getIndex(id + uvec2(0, 1))];
+        float psi_yn = streamFuncScalars[getIndex(id - uvec2(0, 1))];
+
+        float source_term_omega = vorticity[current_idx]; // This is ω from VorticityBuffer. For ∇²ψ = -ω, use -source_term_omega.
+        // C code `invsig(w)` then uses `w` as `f`. So `f` in C is `-original_omega`.
+        // Formula: (A - B*f)/C. If f = -ω, then (A + B*ω)/C.
+        // The C code `poisson_SOR` takes `f`. `main` passes `w` (which was inverted). So `f` is `-original_omega`.
+        // The formula uses `- dx*dx*dy*dy*f.M[i][j]`. So `- pc.h*pc.h*pc.h*pc.h * (-source_term_omega)` if VorticityBuffer contains original omega.
+        // Or `pc.h*pc.h*pc.h*pc.h * source_term_omega` if VorticityBuffer contains `w_inverted`.
+        // Assuming VorticityBuffer contains original ω.
+        // Then `f.M[i][j]` in C context corresponds to `-source_term_omega`.
+        // `psi_new_GS = 0.25 * (neighbor_sum - h*h * f_val)`
+        // `psi_new_GS = 0.25 * (psi_xp + psi_xn + psi_yp + psi_yn - pc.h*pc.h * (-source_term_omega) )`
+        // `psi_new_GS = 0.25 * (psi_xp + psi_xn + psi_yp + psi_yn + pc.h*pc.h * source_term_omega )`
+
+        float term_neighbors = psi_xp + psi_xn + psi_yp + psi_yn;
+        float psi_GS = 0.25 * (term_neighbors + pc.h * pc.h * source_term_omega); // Corresponds to ∇²ψ = -ω
+
+        psi_new = pc.omegaSOR * psi_GS + (1.0 - pc.omegaSOR) * psi_old;
     }
 
-    uint ip = idx + 1;
-    uint im = idx - 1;
-    uint jp = idx + W;
-    uint jm = idx - W;
-
-    float psiC = streamFuncScalars[idx];
-    float sumNbrs = streamFuncScalars[ip]
-            + streamFuncScalars[im]
-            + streamFuncScalars[jp]
-            + streamFuncScalars[jm];
-    float target = 0.25 * (sumNbrs + pc.h * pc.h * (-vorticity[idx]));
-    // SOR update
-    tempScalar[idx] = mix(psiC, target, pc.omegaSOR);
-    // tempScalar[idx] = 3;
+    tempScalar[current_idx] = psi_new;
 }

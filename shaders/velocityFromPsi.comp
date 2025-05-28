@@ -20,30 +20,35 @@ layout(push_constant) uniform PushConstants {
     float h;
 } pc;
 
+uint getIndex(uvec2 coord) {
+    return coord.y * pc.gridDim.x + coord.x;
+}
+
 void main() {
-    ivec2 ij = ivec2(gl_GlobalInvocationID.xy);
-    uint W = pc.gridDim.x;
-    uint H = pc.gridDim.y;
-    uint idx = ij.y * W + ij.x;
-    // tempVec2[idx] = vec2(5, 6);
+    uvec2 id = gl_GlobalInvocationID.xy;
+    uint current_idx = getIndex(id);
+    vec2 new_vel;
 
-    if (ij.x >= W || ij.y >= H) return; // Safety bounds check
+    // Boundary conditions for velocity
+    if (id.y == pc.gridDim.y - 1) { // Top boundary (lid)
+        new_vel = vec2(pc.lidVelocity, 0.0);
+    } else if (id.y == 0 || id.x == 0 || id.x == pc.gridDim.x - 1) { // Other walls
+        new_vel = vec2(0.0, 0.0);
+    } else {
+        // Interior points: calculate derivatives of ψ
+        // Since ψ=0 on boundaries, one-sided differences are implicitly handled if neighbors are sampled from StreamFunctionBuffer
+        // where boundary psi values are correctly set to 0.
+        float psi_xp = streamFuncScalars[getIndex(id + uvec2(1, 0))];
+        float psi_xn = streamFuncScalars[getIndex(id - uvec2(1, 0))];
+        float psi_yp = streamFuncScalars[getIndex(id + uvec2(0, 1))];
+        float psi_yn = streamFuncScalars[getIndex(id - uvec2(0, 1))];
 
-    // --- Boundary Conditions for Velocity ---
-    if (ij.y == int(H) - 1) { // Top boundary (LID)
-        tempVec2[idx] = vec2(pc.lidVelocity, 0.0); // Lid moves horizontally
-    } else if (ij.y == 0 || ij.x == 0 || ij.x == int(W) - 1) { // Other stationary walls
-        tempVec2[idx] = vec2(0.0, 0.0); // No-slip: u=0, v=0
-    } else { // --- Interior points ---
-        uint ip = idx + 1;
-        uint im = idx - 1;
-        uint jp = idx + W;
-        uint jm = idx - W;
+        float dpsi_dx = (psi_xp - psi_xn) / (2.0 * pc.h);
+        float dpsi_dy = (psi_yp - psi_yn) / (2.0 * pc.h);
 
-        float dpsi_dx = (streamFuncScalars[ip] - streamFuncScalars[im]) * (0.5 / pc.h);
-        float dpsi_dy = (streamFuncScalars[jp] - streamFuncScalars[jm]) * (0.5 / pc.h);
-
-        // u =  ∂ψ/∂y, v = -∂ψ/∂x
-        tempVec2[idx] = vec2(dpsi_dy, -dpsi_dx);
+        new_vel.x = dpsi_dy;
+        new_vel.y = -dpsi_dx;
     }
+
+    tempVec2[current_idx] = new_vel;
 }

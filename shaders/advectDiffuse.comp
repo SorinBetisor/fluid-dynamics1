@@ -23,36 +23,48 @@ layout(push_constant) uniform PushConstants {
     float h; // Cell size (Δx = Δy = h)
 } pc;
 
+uint getIndex(uvec2 coord) {
+    return coord.y * pc.gridDim.x + coord.x;
+}
+
+// Helper to safely sample vorticity with clamping (replicating edge values)
+float sampleWSafe(uvec2 coord) {
+    uvec2 clampedCoord = clamp(coord, uvec2(0, 0), pc.gridDim - uvec2(1, 1));
+    return vorticity[getIndex(clampedCoord)];
+}
+
 void main() {
-    ivec2 ij = ivec2(gl_GlobalInvocationID.xy);
-    uint W = pc.gridDim.x;
-    uint H = pc.gridDim.y;
-    uint idx = ij.y * W + ij.x;
-    // tempScalar[idx] = 2;
+    uvec2 id = gl_GlobalInvocationID.xy;
+    uint current_idx = getIndex(id);
 
-    // Copy boundaries straight through
-    if (ij.x == 0 || ij.y == 0 || ij.x >= int(W) - 1 || ij.y >= int(H) - 1) {
-        tempScalar[idx] = vorticity[idx];
-        return;
-    }
+    // For advection/diffusion, boundary cells' vorticity is often set by `vorticity.comp`'s specific boundary formulas.
+    // The `euler` function in C processes all cells. If boundary conditions for vorticity are handled by `vorticity.comp`
+    // this step might only need to operate on interior cells, or use the boundary vorticities as is.
+    // Here, we process all cells, using clamped sampling for neighbors.
 
-    uint ip = idx + 1;
-    uint im = idx - 1;
-    uint jp = idx + W;
-    uint jm = idx - W;
+    float w_old = vorticity[current_idx];
+    vec2 vel = velocities[current_idx];
 
-    float w = vorticity[idx];
-    float u = velocities[idx].x;
-    float v = velocities[idx].y;
+    // Central differences for derivatives of vorticity
+    float w_xp = sampleWSafe(id + uvec2(1, 0));
+    float w_xn = sampleWSafe(id - uvec2(1, 0));
+    float w_yp = sampleWSafe(id + uvec2(0, 1));
+    float w_yn = sampleWSafe(id - uvec2(0, 1));
 
-    // First derivatives
-    float dw_dx = (vorticity[ip] - vorticity[im]) * (0.5 / pc.h);
-    float dw_dy = (vorticity[jp] - vorticity[jm]) * (0.5 / pc.h);
+    float dw_dx = (w_xp - w_xn) / (2.0 * pc.h);
+    float dw_dy = (w_yp - w_yn) / (2.0 * pc.h);
 
-    // Second derivatives
-    float d2w_dx2 = (vorticity[ip] + vorticity[im] - 2.0 * w) / (pc.h * pc.h);
-    float d2w_dy2 = (vorticity[jp] + vorticity[jm] - 2.0 * w) / (pc.h * pc.h);
+    float d2w_dx2 = (w_xp - 2.0 * w_old + w_xn) / (pc.h * pc.h);
+    float d2w_dy2 = (w_yp - 2.0 * w_old + w_yn) / (pc.h * pc.h);
 
-    // Explicit Euler step
-    tempScalar[idx] = w + pc.deltaTime * (-(u * dw_dx + v * dw_dy) + pc.viscosity * (d2w_dx2 + d2w_dy2));
+    float advection_term = -vel.x * dw_dx - vel.y * dw_dy;
+    float diffusion_term = pc.viscosity * (d2w_dx2 + d2w_dy2);
+
+    float w_new = w_old + pc.deltaTime * (advection_term + diffusion_term);
+
+    // If current cell IS a boundary, its new value might be overwritten by specific BCs later.
+    // The C code's `euler` updates w, then `main` loop re-calculates boundary `w` from velocities.
+    // This shader computes an intermediate w* for all points.
+
+    tempScalar[current_idx] = w_new;
 }

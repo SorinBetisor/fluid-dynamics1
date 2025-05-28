@@ -65,7 +65,7 @@ public:
   std::string _filePath{};
   bool _isInitialized{false};
   int _frameNumber{0};
-  glm::uvec2 _fluidGridDimensions{256, 256}; // Example fluid grid size
+  glm::uvec2 _fluidGridDimensions{1024, 1024}; // Example fluid grid size
 
   VkInstance _instance;
   VkDebugUtilsMessengerEXT _debug_messenger;

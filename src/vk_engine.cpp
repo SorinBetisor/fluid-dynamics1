@@ -335,7 +335,7 @@ void VulkanEngine::init_fluid_simulation_resources() {
       create_buffer(tempVecBufferSize, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
                     VMA_MEMORY_USAGE_CPU_ONLY);
   memcpy(stagingVecBuffer.allocation->GetMappedData(), initialVec2s.data(),
-         vorticityBufferSize);
+         tempVecBufferSize);
   immediate_submit([&](VkCommandBuffer cmd) {
     VkBufferCopy copyRegion = {};
     copyRegion.dstOffset = 0;
@@ -449,33 +449,6 @@ void VulkanEngine::init_fluid_simulation_resources() {
   VK_CHECK(vkCreatePipelineLayout(_device, &pipelineLayoutInfo, nullptr,
                                   &_fluidSimPipelineLayout));
 
-  // VkShaderModule fluidComputeShader;
-  // std::string shaderPath = _filePath + "/shaders/navier.comp.spv";
-  // if (!vkutil::load_shader_module(shaderPath.c_str(), _device,
-  //                                 &fluidComputeShader)) {
-  //   fmt::println(stderr, "Error when building the fluid compute shader: {}",
-  //                shaderPath);
-  // } else {
-  //   fmt::println("Fluid compute shader successfully loaded: {}", shaderPath);
-  // }
-  //
-  // VkPipelineShaderStageCreateInfo stageInfo{};
-  // stageInfo.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-  // stageInfo.stage = VK_SHADER_STAGE_COMPUTE_BIT;
-  // stageInfo.module = fluidComputeShader;
-  // stageInfo.pName = "main";
-  //
-  // VkComputePipelineCreateInfo computePipelineCreateInfo{};
-  // computePipelineCreateInfo.sType =
-  //     VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
-  // computePipelineCreateInfo.layout = _fluidSimPipelineLayout;
-  // computePipelineCreateInfo.stage = stageInfo;
-  //
-  // VK_CHECK(vkCreateComputePipelines(_device, VK_NULL_HANDLE, 1,
-  //                                   &computePipelineCreateInfo, nullptr,
-  //                                   &_fluidSimPipeline));
-  //
-  // vkDestroyShaderModule(_device, fluidComputeShader, nullptr);
   _vorticityPipeline =
       create_compute_pipeline(_filePath + "/shaders/vorticity.comp.spv");
   _advectionPipeline =
@@ -573,17 +546,14 @@ void VulkanEngine::dispatch_fluid_simulation(VkCommandBuffer cmd) {
 
   // Push constants setup (once) PARAMETERS
   _fluidSimConstants.gridDim = _fluidGridDimensions;
-  _fluidSimConstants.deltaTime = 0.001f; // Adjust as needed
+  _fluidSimConstants.deltaTime = 0.1f; // Adjust as needed
   _fluidSimConstants.density = 1.0f;
   _fluidSimConstants.viscosity = 0.001f; // Adjust as needed for Reynolds number
   _fluidSimConstants.numPressureIterations =
       50;                                // SOR iterations for Poisson/Pressure
   _fluidSimConstants.omegaSOR = 1.7f;    // SOR relaxation factor
   _fluidSimConstants.lidVelocity = 1.0f; // Crucial for driving the flow
-  _fluidSimConstants.h =
-      1.0f / float(_fluidGridDimensions
-                       .x); // Or x-1 if node-centered & dim is node count
-
+  _fluidSimConstants.h = 1.0f;
   // --- Simulation Cycle ---
   // Initial state: _fluidVorticityBuffer has initial data. _fluidVelocityBuffer
   // is zero.

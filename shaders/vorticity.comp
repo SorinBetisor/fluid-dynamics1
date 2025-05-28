@@ -24,54 +24,67 @@ layout(push_constant) uniform PushConstants {
     float h;
 } pc;
 
+uint getIndex(uvec2 coord) {
+    return coord.y * pc.gridDim.x + coord.x;
+}
+
 void main() {
-    ivec2 ij = ivec2(gl_GlobalInvocationID.xy);
-    uint W = pc.gridDim.x;
-    uint H = pc.gridDim.y;
-    uint idx = ij.y * W + ij.x;
-    // tempScalar[idx] = 1;
-    if (ij.x >= W || ij.y >= H) return; // Safety bounds check
+    uvec2 id = gl_GlobalInvocationID.xy;
+    uint out_idx = getIndex(id);
 
-    float h_sq = pc.h * pc.h;
+    float u_curr = velocities[getIndex(id)].x;
+    float v_curr = velocities[getIndex(id)].y;
 
-    // --- Boundary Conditions for Vorticity ---
-    // Using Thom's formula or similar (first-order accurate)
-    // Assumes stream function (ψ) is 0 on stationary boundaries.
-    if (ij.y == 0 && ij.x > 0 && ij.x < W - 1) { // Bottom wall (not corners)
-        // ω_wall = -2 * ψ_neighbor_in_fluid / h²
-        tempScalar[idx] = -2.0 * streamFuncScalars[idx + W] / h_sq;
-    } else if (ij.y == int(H) - 1 && ij.x > 0 && ij.x < W - 1) { // Top lid (not corners)
-        // ω_lid = -2 * ψ_neighbor_in_fluid / h² - 2 * U_lid / h
-        tempScalar[idx] = -2.0 * streamFuncScalars[idx - W] / h_sq - 2.0 * pc.lidVelocity / pc.h;
-    } else if (ij.x == 0 && ij.y > 0 && ij.y < H - 1) { // Left wall (not corners)
-        tempScalar[idx] = -2.0 * streamFuncScalars[idx + 1] / h_sq;
-    } else if (ij.x == int(W) - 1 && ij.y > 0 && ij.y < H - 1) { // Right wall (not corners)
-        tempScalar[idx] = -2.0 * streamFuncScalars[idx - 1] / h_sq;
+    float u_up, u_down, v_left, v_right;
+    float du_dy, dv_dx;
+
+    // Handle boundaries for derivatives
+    // Top boundary (y = gridDim.y - 1)
+    if (id.y == pc.gridDim.y - 1) {
+        u_up = pc.lidVelocity; // Lid velocity
+        u_down = velocities[getIndex(uvec2(id.x, id.y - 1))].x;
+        du_dy = (u_up - u_down) / pc.h; // One-sided difference (top physical boundary)
     }
-    // Handle Corners (can average from adjacent walls or use specific formulas)
-    // Simplification: Apply wall formulas, let adjacencies define corners.
-    // Example: Bottom-left corner (ij.x == 0 && ij.y == 0)
-    else if (ij.x == 0 && ij.y == 0) { // Bottom-left corner
-        tempScalar[idx] = -2.0 * (streamFuncScalars[idx + W] + streamFuncScalars[idx + 1]) / h_sq; // Average-ish
-    } else if (ij.x == W - 1 && ij.y == 0) { // Bottom-right
-        tempScalar[idx] = -2.0 * (streamFuncScalars[idx + W] + streamFuncScalars[idx - 1]) / h_sq;
-    } else if (ij.x == 0 && ij.y == H - 1) { // Top-left
-        tempScalar[idx] = -2.0 * (streamFuncScalars[idx - W] + streamFuncScalars[idx + 1]) / h_sq
-                - 2.0 * pc.lidVelocity / pc.h; // Lid influence
-    } else if (ij.x == W - 1 && ij.y == H - 1) { // Top-right
-        tempScalar[idx] = -2.0 * (streamFuncScalars[idx - W] + streamFuncScalars[idx - 1]) / h_sq
-                - 2.0 * pc.lidVelocity / pc.h; // Lid influence
-    } else { // --- Interior points: ω = ∂v/∂x - ∂u/∂y ---
-        uint ip = idx + 1;
-        uint im = idx - 1;
-        uint jp = idx + W;
-        uint jm = idx - W;
-
-        // ∂v/∂x
-        float dvdx = (velocities[ip].y - velocities[im].y) * (0.5 / pc.h);
-        // ∂u/∂y
-        float dudy = (velocities[jp].x - velocities[jm].x) * (0.5 / pc.h);
-
-        tempScalar[idx] = dvdx - dudy;
+    // Bottom boundary (y = 0)
+    else if (id.y == 0) {
+        u_up = velocities[getIndex(uvec2(id.x, id.y + 1))].x;
+        u_down = 0.0; // Wall velocity
+        du_dy = (u_up - u_down) / pc.h; // One-sided difference (bottom physical boundary)
     }
+    // Interior y
+    else {
+        u_up = velocities[getIndex(uvec2(id.x, id.y + 1))].x;
+        u_down = velocities[getIndex(uvec2(id.x, id.y - 1))].x;
+        du_dy = (u_up - u_down) / (2.0 * pc.h); // Central difference
+    }
+
+    // Right boundary (x = gridDim.x - 1)
+    if (id.x == pc.gridDim.x - 1) {
+        v_right = 0.0; // Wall velocity
+        v_left = velocities[getIndex(uvec2(id.x - 1, id.y))].y;
+        dv_dx = (v_right - v_left) / pc.h; // One-sided difference
+    }
+    // Left boundary (x = 0)
+    else if (id.x == 0) {
+        v_right = velocities[getIndex(uvec2(id.x + 1, id.y))].y;
+        v_left = 0.0; // Wall velocity
+        dv_dx = (v_right - v_left) / pc.h; // One-sided difference
+    }
+    // Interior x
+    else {
+        v_right = velocities[getIndex(uvec2(id.x + 1, id.y))].y;
+        v_left = velocities[getIndex(uvec2(id.x - 1, id.y))].y;
+        dv_dx = (v_right - v_left) / (2.0 * pc.h); // Central difference
+    }
+
+    // Specific vorticity boundary conditions from common CFD practice for lid-driven cavity (alternative to above general derivatives):
+    // ω_wall = 2 * (u_neighbor_normal - u_wall_tangential) / h_normal
+    // Bottom wall (y=0): ω = -2 * u(i,1) / h  (since u_wall = 0, v_wall = 0 means dv/dx approx 0 at wall)
+    // Top wall (y=Ny-1): ω = 2 * (pc.lidVelocity - u(i,Ny-2)) / h
+    // Left wall (x=0): ω = 2 * v(1,j) / h
+    // Right wall (x=Nx-1): ω = -2 * v(Nx-2,j) / h
+    // For simplicity here, the general derivative form is kept, but for high accuracy, specific wall vorticity formulas are better.
+    // The C code calculates dvdx and dudy matrices first, then combines. The approach above is cell-local.
+
+    tempScalar[out_idx] = dv_dx - du_dy;
 }
