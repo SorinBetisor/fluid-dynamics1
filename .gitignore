@@ -55,3 +55,27 @@ dkms.conf
 .output
 *.vtk
 cnavier
+
+# CMake build directories and files
+build/
+build-*/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+*.cmake
+!CMakeLists.txt
+compile_commands.json
+CTestTestfile.cmake
+Testing/
+
+# Visual Studio / MSBuild
+.vs/
+out/
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.sln
+CMakeLists.txt
+build.bat

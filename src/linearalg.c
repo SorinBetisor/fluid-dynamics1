@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <float.h>
 #include "linearalg.h"
 
 void zerosm(mtrx A)
@@ -382,7 +383,7 @@ void invsig(mtrx A)
 double maxel(mtrx A)
 {
     int i, j;
-    double max_element = -__DBL_MAX__;
+    double max_element = -DBL_MAX;
 
     for (i = 0; i < A.m; i++)
     {
@@ -400,7 +401,7 @@ double maxel(mtrx A)
 double minel(mtrx A)
 {
     int i, j;
-    double min_element = __DBL_MAX__;
+    double min_element = DBL_MAX;
 
     for (i = 0; i < A.m; i++)
     {
