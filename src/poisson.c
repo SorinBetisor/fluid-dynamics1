@@ -37,7 +37,7 @@ mtrx poisson(mtrx f, double dx, double dy, int itmax, double tol)
         {
             for (j = 1; j < ny - 1; j++)
             {
-                u.M[i][j] = (dy * dy * (u.M[i + 1][j] + u.M[i - 1][j]) + dx * dx * (u.M[i][j + 1] + u.M[i][j - 1]) - dx * dx * dy * dy * f.M[i][j]) / (2 * (dx * dx + dy * dy));
+                u.M[i][j] = (dy * dy * (u.M[i + 1][j] + u.M[i - 1][j]) + dx * dx * (u.M[i][j + 1] + u.M[i][j - 1]) + dx * dx * dy * dy * f.M[i][j]) / (2 * (dx * dx + dy * dy));
             }
         }
         e = error(u, u0);
@@ -73,7 +73,7 @@ mtrx poisson_SOR(mtrx f, double dx, double dy, int itmax, double tol, double bet
         {
             for (j = 1; j < ny - 1; j++)
             {
-                u.M[i][j] = beta * (dy * dy * (u.M[i + 1][j] + u.M[i - 1][j]) + dx * dx * (u.M[i][j + 1] + u.M[i][j - 1]) - dx * dx * dy * dy * f.M[i][j]) / (2 * (dx * dx + dy * dy)) + (1 - beta) * u0.M[i][j];
+                u.M[i][j] = beta * (dy * dy * (u.M[i + 1][j] + u.M[i - 1][j]) + dx * dx * (u.M[i][j + 1] + u.M[i][j - 1]) + dx * dx * dy * dy * f.M[i][j]) / (2 * (dx * dx + dy * dy)) + (1 - beta) * u0.M[i][j];
             }
         }
         e = error(u, u0);
@@ -109,8 +109,7 @@ mtrx poisson_with_object(mtrx f, double dx, double dy, int itmax, double tol, ce
             for (j = 1; j < ny - 1; j++)
             {
                 if (!grid[i][j].is_solid) {
-                    // Only update fluid cells
-                    u.M[i][j] = (dy * dy * (u.M[i + 1][j] + u.M[i - 1][j]) + dx * dx * (u.M[i][j + 1] + u.M[i][j - 1]) - dx * dx * dy * dy * f.M[i][j]) / (2 * (dx * dx + dy * dy));
+                    u.M[i][j] = (dy * dy * (u.M[i + 1][j] + u.M[i - 1][j]) + dx * dx * (u.M[i][j + 1] + u.M[i][j - 1]) + dx * dx * dy * dy * f.M[i][j]) / (2 * (dx * dx + dy * dy));
                 }
                 // Solid cells remain unchanged (stream function = 0 inside solid)
             }
@@ -148,8 +147,7 @@ mtrx poisson_SOR_with_object(mtrx f, double dx, double dy, int itmax, double tol
             for (j = 1; j < ny - 1; j++)
             {
                 if (!grid[i][j].is_solid) {
-                    // Only update fluid cells
-                    u.M[i][j] = beta * (dy * dy * (u.M[i + 1][j] + u.M[i - 1][j]) + dx * dx * (u.M[i][j + 1] + u.M[i][j - 1]) - dx * dx * dy * dy * f.M[i][j]) / (2 * (dx * dx + dy * dy)) + (1 - beta) * u0.M[i][j];
+                    u.M[i][j] = beta * (dy * dy * (u.M[i + 1][j] + u.M[i - 1][j]) + dx * dx * (u.M[i][j + 1] + u.M[i][j - 1]) + dx * dx * dy * dy * f.M[i][j]) / (2 * (dx * dx + dy * dy)) + (1 - beta) * u0.M[i][j];
                 }
                 // Solid cells remain unchanged (stream function = 0 inside solid)
             }

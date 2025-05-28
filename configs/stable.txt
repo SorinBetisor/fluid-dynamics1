@@ -21,6 +21,6 @@ use_gpu = 1                # Use GPU for Poisson solver
 use_vulkan = 0             # Use Vulkan for Poisson solver
 
 # Object parameters
-center_x = 0.5             # Center of object in x direction
-center_y = 0.5             # Center of object in y direction
-radius = 0.1               # Radius of circular object 
+center_x = -1.0             # Center of object in x direction
+center_y = -1.0             # Center of object in y direction
+radius = 0.01               # Radius of circular object 

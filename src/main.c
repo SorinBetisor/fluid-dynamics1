@@ -179,6 +179,23 @@ int main(int argc, char *argv[])
         }
     }
 
+    // Count solid cells to determine if we have objects
+    int solid_cell_count = 0;
+    for (i = 0; i < nx; i++) {
+        for (j = 0; j < ny; j++) {
+            if (grid[i][j].is_solid) {
+                solid_cell_count++;
+            }
+        }
+    }
+    
+    int has_objects = (solid_cell_count > 0);
+    if (has_objects) {
+        printf("Detected %d solid cells - using object-aware Poisson solvers\n", solid_cell_count);
+    } else {
+        printf("No objects detected - using regular Poisson solvers for better performance\n");
+    }
+
     // Generates derivatives operators
     mtrx d_x = Diff1(nx, order, dx);
     mtrx d_y = Diff1(ny, order, dy);
@@ -305,12 +322,14 @@ int main(int argc, char *argv[])
         }
 
         // Apply no-slip condition on the object boundary
-        #pragma omp parallel for private(j) if(use_omp)
-        for (i = 0; i < nx; i++) {
-            for (j = 0; j < ny; j++) {
-                if (grid[i][j].is_solid) {
-                    u.M[i][j] = 0.0;
-                    v.M[i][j] = 0.0;
+        if (has_objects) {
+            #pragma omp parallel for private(j) if(use_omp)
+            for (i = 0; i < nx; i++) {
+                for (j = 0; j < ny; j++) {
+                    if (grid[i][j].is_solid) {
+                        u.M[i][j] = 0.0;
+                        v.M[i][j] = 0.0;
+                    }
                 }
             }
         }
@@ -342,19 +361,24 @@ int main(int argc, char *argv[])
         #pragma omp parallel for if(use_omp)
         for (i = 1; i < nx - 1; i++)
         {
+            // CRITICAL FIX: Correct vorticity boundary conditions
+            // For ∇²ψ = -ω, the boundary condition becomes:
+            // ω = -∂²ψ/∂n² where n is normal to wall
+            
             // Top wall vorticity (moving lid creates vorticity)
-            w.M[i][ny - 1] = -2.0 * (psi.M[i][ny - 2] - psi.M[i][ny - 1]) / (dy * dy) - 2.0 * u_top / dy;
+            // Using ω = -∂²ψ/∂y² - 2*u_wall/dy for moving wall
+            w.M[i][ny - 1] = 2.0 * (psi.M[i][ny - 2] - psi.M[i][ny - 1]) / (dy * dy) + 2.0 * u_top / dy;
             
             // Bottom wall vorticity
-            w.M[i][0] = -2.0 * (psi.M[i][1] - psi.M[i][0]) / (dy * dy);
+            w.M[i][0] = 2.0 * (psi.M[i][1] - psi.M[i][0]) / (dy * dy);
         }
         
         // Left and right wall vorticity
         #pragma omp parallel for if(use_omp)
         for (j = 1; j < ny - 1; j++)
         {
-            w.M[0][j] = -2.0 * (psi.M[1][j] - psi.M[0][j]) / (dx * dx);
-            w.M[nx - 1][j] = -2.0 * (psi.M[nx - 2][j] - psi.M[nx - 1][j]) / (dx * dx);
+            w.M[0][j] = 2.0 * (psi.M[1][j] - psi.M[0][j]) / (dx * dx);
+            w.M[nx - 1][j] = 2.0 * (psi.M[nx - 2][j] - psi.M[nx - 1][j]) / (dx * dx);
         }
 
         // Corner vorticity
@@ -398,39 +422,64 @@ int main(int argc, char *argv[])
         }
 
         // Set vorticity inside solid to zero
-        #pragma omp parallel for private(j) if(use_omp)
-        for (i = 0; i < nx; i++) {
-            for (j = 0; j < ny; j++) {
-                if (grid[i][j].is_solid) {
-                    w.M[i][j] = 0.0;
+        if (has_objects) {
+            #pragma omp parallel for private(j) if(use_omp)
+            for (i = 0; i < nx; i++) {
+                for (j = 0; j < ny; j++) {
+                    if (grid[i][j].is_solid) {
+                        w.M[i][j] = 0.0;
+                    }
                 }
             }
         }
 
         // Solves Poisson equation for stream function
         psi.M = freem(psi);
-        invsig(w);
         
         double poisson_start = omp_get_wtime();
         
         if (poisson_type == 1)
         {
-            if (use_gpu) {
-                psi = poisson_gpu_with_object(w, dx, dy, poisson_max_it, poisson_tol, grid);
-            } else if (use_vulkan) {
-                psi = poisson_vulkan_with_object(w, dx, dy, poisson_max_it, poisson_tol, grid);
+            if (has_objects) {
+                // Use object-aware solvers when objects are present
+                if (use_gpu) {
+                    psi = poisson_gpu_with_object(w, dx, dy, poisson_max_it, poisson_tol, grid);
+                } else if (use_vulkan) {
+                    psi = poisson_vulkan_with_object(w, dx, dy, poisson_max_it, poisson_tol, grid);
+                } else {
+                    psi = poisson_with_object(w, dx, dy, poisson_max_it, poisson_tol, grid);
+                }
             } else {
-                psi = poisson_with_object(w, dx, dy, poisson_max_it, poisson_tol, grid);
+                // Use regular solvers when no objects are present (more efficient)
+                if (use_gpu) {
+                    psi = poisson_gpu(w, dx, dy, poisson_max_it, poisson_tol);
+                } else if (use_vulkan) {
+                    psi = poisson_vulkan(w, dx, dy, poisson_max_it, poisson_tol);
+                } else {
+                    psi = poisson(w, dx, dy, poisson_max_it, poisson_tol);
+                }
             }
         }
         else if (poisson_type == 2)
         {
-            if (use_gpu) {
-                psi = poisson_SOR_gpu_with_object(w, dx, dy, poisson_max_it, poisson_tol, beta, grid);
-            } else if (use_vulkan) {
-                psi = poisson_SOR_vulkan_with_object(w, dx, dy, poisson_max_it, poisson_tol, beta, grid);
+            if (has_objects) {
+                // Use object-aware SOR solvers when objects are present
+                if (use_gpu) {
+                    psi = poisson_SOR_gpu_with_object(w, dx, dy, poisson_max_it, poisson_tol, beta, grid);
+                } else if (use_vulkan) {
+                    psi = poisson_SOR_vulkan_with_object(w, dx, dy, poisson_max_it, poisson_tol, beta, grid);
+                } else {
+                    psi = poisson_SOR_with_object(w, dx, dy, poisson_max_it, poisson_tol, beta, grid);
+                }
             } else {
-                psi = poisson_SOR_with_object(w, dx, dy, poisson_max_it, poisson_tol, beta, grid);
+                // Use regular SOR solvers when no objects are present (more efficient)
+                if (use_gpu) {
+                    psi = poisson_SOR_gpu(w, dx, dy, poisson_max_it, poisson_tol, beta);
+                } else if (use_vulkan) {
+                    psi = poisson_SOR_vulkan(w, dx, dy, poisson_max_it, poisson_tol, beta);
+                } else {
+                    psi = poisson_SOR(w, dx, dy, poisson_max_it, poisson_tol, beta);
+                }
             }
         }
         else
@@ -441,8 +490,6 @@ int main(int argc, char *argv[])
         
         double poisson_end = omp_get_wtime();
         poisson_time += (poisson_end - poisson_start);
-
-        invsig(w);
 
         // Computes velocities from stream function
         psi0 = reshape(psi, nx * ny, 1);
@@ -486,12 +533,14 @@ int main(int argc, char *argv[])
         }
 
         // Apply no-slip condition on the object boundary again
-        #pragma omp parallel for private(j) if(use_omp)
-        for (i = 0; i < nx; i++) {
-            for (j = 0; j < ny; j++) {
-                if (grid[i][j].is_solid) {
-                    u.M[i][j] = 0.0;
-                    v.M[i][j] = 0.0;
+        if (has_objects) {
+            #pragma omp parallel for private(j) if(use_omp)
+            for (i = 0; i < nx; i++) {
+                for (j = 0; j < ny; j++) {
+                    if (grid[i][j].is_solid) {
+                        u.M[i][j] = 0.0;
+                        v.M[i][j] = 0.0;
+                    }
                 }
             }
         }
