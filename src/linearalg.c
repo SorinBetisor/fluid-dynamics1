@@ -2,10 +2,12 @@
 #include <stdlib.h>
 #include <float.h>
 #include "linearalg.h"
+// #include <omp.h>
 
 void zerosm(mtrx A)
 {
     int i, j;
+    // #pragma omp parallel for collapse(2)
     for (i = 0; i < A.m; i++)
     {
         for (j = 0; j < A.n; j++)

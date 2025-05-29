@@ -330,10 +330,10 @@ int main(int argc, char *argv[])
 
         if (t % output_interval == 0)
         {
-            // printvtk(psi, "stream-function", output_dir);
+            printvtk(psi, "stream-function", output_dir);
             printvtk(w, "vorticity", output_dir);
-            // printvtk(u, "x-velocity", output_dir);
-            // printvtk(v, "y-velocity", output_dir);
+            printvtk(u, "x-velocity", output_dir);
+            printvtk(v, "y-velocity", output_dir);
             // printvtk(p, "pressure", output_dir);
         }
 
