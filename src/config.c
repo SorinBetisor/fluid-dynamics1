@@ -267,10 +267,17 @@ void print_config(const Config* config) {
  * @param program_name Name of the executable (typically argv[0])
  */
 void print_usage(const char* program_name) {
-    printf("Usage: %s [config_file]\n", program_name);
+    printf("Usage: %s [config_file] [output_folder]\n", program_name);
     printf("\nOptions:\n");
     printf("  config_file    Path to configuration file (optional)\n");
     printf("                 If not provided, default values will be used\n");
+    printf("  output_folder  Name of output subfolder (optional)\n");
+    printf("                 Files will be saved to ./output/[output_folder]/\n");
+    printf("                 If not provided, files will be saved to ./output/\n");
+    printf("\nExamples:\n");
+    printf("  %s                           # Use defaults, output to ./output/\n", program_name);
+    printf("  %s config.txt               # Use config.txt, output to ./output/\n", program_name);
+    printf("  %s config.txt run1          # Use config.txt, output to ./output/run1/\n", program_name);
     printf("\nConfiguration file format:\n");
     printf("  # Comments start with # or ;\n");
     printf("  parameter_name = value\n");

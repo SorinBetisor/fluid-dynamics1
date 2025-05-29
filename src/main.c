@@ -15,6 +15,7 @@ int main(int argc, char *argv[])
     // srand(time(NULL));
     int i, j, t;
     Config config;
+    char output_dir[256] = "./output"; // Default output directory
 
     // Parse command line arguments
     if (argc == 1) {
@@ -58,6 +59,11 @@ int main(int argc, char *argv[])
             // Load configuration from file
             config = load_config_from_file(argv[1]);
         }
+    } else if (argc == 3) {
+        // Load configuration from file and set output directory
+        config = load_config_from_file(argv[1]);
+        snprintf(output_dir, sizeof(output_dir), "./output/%s", argv[2]);
+        printf("Using output directory: %s\n", output_dir);
     } else {
         printf("Error: Too many arguments.\n");
         print_usage(argv[0]);
@@ -324,11 +330,11 @@ int main(int argc, char *argv[])
 
         if (t % output_interval == 0)
         {
-            // printvtk(psi, "stream-function");
-            printvtk(w, "vorticity");
-            // printvtk(u, "x-velocity");
-            // printvtk(v, "y-velocity");
-            // printvtk(p, "pressure");
+            // printvtk(psi, "stream-function", output_dir);
+            printvtk(w, "vorticity", output_dir);
+            // printvtk(u, "x-velocity", output_dir);
+            // printvtk(v, "y-velocity", output_dir);
+            // printvtk(p, "pressure", output_dir);
         }
 
         // Free memory
