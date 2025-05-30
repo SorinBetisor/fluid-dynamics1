@@ -21,6 +21,9 @@ poisson_max_it = 15000
 poisson_tol = 5E-4
 poisson_type = 2
 
+# Performance settings
+openmp_enabled = 1
+
 # More frequent output for detailed analysis
 output_interval = 5
 

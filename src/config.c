@@ -20,6 +20,9 @@
 #include <math.h>
 #include "config.h"
 #include "utils.h"
+#ifdef OPENMP_ENABLED
+#include <omp.h>
+#endif
 
 #ifndef PI
 #define PI 3.14159265359
@@ -60,6 +63,13 @@ Config load_default_config(void) {
     config.poisson_tol = 1E-3;      // Poisson solver convergence tolerance
     config.output_interval = 10;    // VTK output frequency
     config.poisson_type = 2;        // Poisson solver type (1=basic, 2=SOR)
+    
+    // Performance parameters
+#ifdef OPENMP_ENABLED
+    config.openmp_enabled = 1;      // Enable OpenMP by default if available
+#else
+    config.openmp_enabled = 0;      // Disable OpenMP if not compiled with it
+#endif
     
     // Boundary conditions (Dirichlet) - Lid-driven cavity setup
     config.ui = 0.0;        // Initial internal u-velocity
@@ -167,6 +177,10 @@ Config load_config_from_file(const char* filename) {
             } else if (strcmp(key_trimmed, "poisson_type") == 0) {
                 config.poisson_type = atoi(value_trimmed);
             }
+            // Performance parameters
+            else if (strcmp(key_trimmed, "openmp_enabled") == 0) {
+                config.openmp_enabled = atoi(value_trimmed);
+            }
             // Boundary conditions
             else if (strcmp(key_trimmed, "ui") == 0) {
                 config.ui = atof(value_trimmed);
@@ -232,6 +246,17 @@ void print_config(const Config* config) {
     printf("  Output interval: %d\n", config->output_interval);
     printf("  Poisson solver type: %d\n", config->poisson_type);
     
+    printf("\nPerformance Parameters:\n");
+    printf("  OpenMP enabled (config): %s\n", config->openmp_enabled ? "Yes" : "No");
+#ifdef OPENMP_ENABLED
+    printf("  OpenMP compiled support: Yes\n");
+#ifdef _OPENMP
+    printf("  OpenMP runtime version: %d\n", _OPENMP);
+#endif
+#else
+    printf("  OpenMP compiled support: No\n");
+#endif
+    
     printf("\nBoundary Conditions:\n");
     printf("  Internal u field (ui): %.2f\n", config->ui);
     printf("  Internal v field (vi): %.2f\n", config->vi);
@@ -296,4 +321,41 @@ void print_usage(const char* program_name) {
     printf("  # Boundary conditions\n");
     printf("  u4 = 1.0  # top boundary velocity\n");
     printf("\nFor a complete list of parameters, run with --help-config\n");
+}
+
+/**
+ * @brief Print OpenMP status information at startup
+ * 
+ * Displays whether OpenMP is available at compile time, enabled in config,
+ * and provides thread count information if available.
+ * 
+ * @param config Pointer to configuration structure
+ */
+void print_openmp_status(const Config* config) {
+    printf("\n=== OpenMP Status ===\n");
+    
+#ifdef OPENMP_ENABLED
+    printf("OpenMP Support: AVAILABLE\n");
+    printf("Configuration Setting: %s\n", config->openmp_enabled ? "ENABLED" : "DISABLED");
+    
+    if (config->openmp_enabled) {
+#ifdef _OPENMP
+        int max_threads = omp_get_max_threads();
+        printf("Maximum Threads: %d\n", max_threads);
+        printf("OpenMP Version: %d\n", _OPENMP);
+        printf("Status: OpenMP will be used for parallel computations\n");
+#else
+        printf("Status: OpenMP enabled but runtime not detected\n");
+#endif
+    } else {
+        printf("Status: OpenMP disabled by configuration\n");
+    }
+#else
+    printf("OpenMP Support: NOT AVAILABLE\n");
+    printf("Configuration Setting: %s (ignored - not compiled with OpenMP)\n", 
+           config->openmp_enabled ? "ENABLED" : "DISABLED");
+    printf("Status: Sequential execution only\n");
+#endif
+    
+    printf("====================\n\n");
 } 

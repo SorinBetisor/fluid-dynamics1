@@ -95,6 +95,12 @@ tf = 20.0
 | `output_interval` | int | 10 | VTK output frequency (every N iterations) |
 | `poisson_type` | int | 2 | Poisson solver type: 1=basic, 2=SOR |
 
+#### Performance Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `openmp_enabled` | int | 1 (if compiled with OpenMP) | Enable OpenMP parallelization: 0=disabled, 1=enabled |
+
 #### Boundary Conditions
 
 | Parameter | Type | Default | Description |
@@ -135,6 +141,9 @@ poisson_tol = 1E-3
 output_interval = 10
 poisson_type = 2
 
+# Performance settings
+openmp_enabled = 1
+
 # Boundary conditions (lid-driven cavity)
 ui = 0.0
 vi = 0.0
@@ -171,6 +180,9 @@ poisson_tol = 1E-4
 output_interval = 50
 poisson_type = 2
 
+# Performance settings
+openmp_enabled = 1
+
 # Boundary conditions
 ui = 0.0
 vi = 0.0
@@ -182,6 +194,42 @@ v1 = 0.0
 v2 = 0.0
 v3 = 0.0
 v4 = 0.0
+```
+
+## OpenMP Configuration
+
+The simulation includes OpenMP support for parallel execution on multi-core systems. OpenMP can significantly improve performance for larger grid sizes.
+
+### OpenMP Settings
+
+| Setting | Description |
+|---------|-------------|
+| `openmp_enabled = 1` | Enable OpenMP parallelization |
+| `openmp_enabled = 0` | Disable OpenMP (sequential execution) |
+
+### Performance Considerations
+
+- **Small grids (< 64x64)**: OpenMP may not provide benefits due to overhead
+- **Large grids (> 128x128)**: OpenMP can provide significant speedup
+- **Matrix operations**: Automatically use OpenMP only for matrices larger than 64x64
+- **Thread count**: Controlled by environment variable `OMP_NUM_THREADS`
+
+### Testing OpenMP
+
+```bash
+# Test with OpenMP enabled
+./cnavier config_openmp_test.txt openmp_test
+
+# Test with OpenMP disabled for comparison
+./cnavier config_sequential_test.txt sequential_test
+
+# Set specific number of threads (Windows PowerShell)
+$env:OMP_NUM_THREADS = "4"
+./cnavier config_default.txt
+
+# Set specific number of threads (Linux/Mac)
+export OMP_NUM_THREADS=4
+./cnavier config_default.txt
 ```
 
 ## Usage Workflows

@@ -37,4 +37,7 @@ double maxel(mtrx A);                           // Returns max element from matr
 double minel(mtrx A);                           // Returns min element from matrix
 void mtrxcpy(mtrx A, mtrx B);                   // Copy matrix B into A
 
+// OpenMP configuration
+void set_openmp_config(int enabled);           // Set OpenMP enabled/disabled state
+
 #endif // LINEARALG_H_INCLUDED

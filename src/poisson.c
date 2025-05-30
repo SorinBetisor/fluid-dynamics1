@@ -1,8 +1,20 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <stdarg.h>
 #include "linearalg.h"
 #include "poisson.h"
+
+// Helper function for logging (matches main.c pattern)
+static void poisson_log_message(FILE *log_file, const char *format, ...) {
+    if (log_file != NULL) {
+        va_list args;
+        va_start(args, format);
+        vfprintf(log_file, format, args);
+        va_end(args);
+        fflush(log_file);
+    }
+}
 
 double error(mtrx u1, mtrx u2)
 {
@@ -85,6 +97,77 @@ mtrx poisson_SOR(mtrx f, double dx, double dy, int itmax, double tol, double bet
         }
     }
     printf("Error: maximum number of iterations achieved for Poisson equation.\n");
+
+    u.M = freem(u);
+    u0.M = freem(u0);
+    exit(1);
+}
+
+// New versions with logging support
+mtrx poisson_log(mtrx f, double dx, double dy, int itmax, double tol, FILE *log_file)
+{
+    int i, j, k, nx, ny;
+    double e;
+    mtrx u, u0;
+    u = initm(f.m, f.n);
+    u0 = initm(f.m, f.n);
+    nx = f.m;
+    ny = f.n;
+
+    for (k = 0; k < itmax; k++)
+    {
+        mtrxcpy(u0, u);
+        for (i = 1; i < nx - 1; i++)
+        {
+            for (j = 1; j < ny - 1; j++)
+            {
+                u.M[i][j] = (dy * dy * (u.M[i + 1][j] + u.M[i - 1][j]) + dx * dx * (u.M[i][j + 1] + u.M[i][j - 1]) - dx * dx * dy * dy * f.M[i][j]) / (2 * (dx * dx + dy * dy));
+            }
+        }
+        e = error(u, u0);
+        if (e < tol)
+        {
+            poisson_log_message(log_file, "Poisson equation solved with %d iterations - root-sum-of-squares error: %E\n", k, e);
+            u0.M = freem(u0);
+            return u;
+        }
+    }
+    poisson_log_message(log_file, "Error: maximum number of iterations achieved for Poisson equation.\n");
+
+    u.M = freem(u);
+    u0.M = freem(u0);
+    exit(1);
+}
+
+mtrx poisson_SOR_log(mtrx f, double dx, double dy, int itmax, double tol, double beta, FILE *log_file)
+{
+    int i, j, k, nx, ny;
+    double e;
+    mtrx u, u0;
+    u = initm(f.m, f.n);
+    u0 = initm(f.m, f.n);
+    nx = f.m;
+    ny = f.n;
+
+    for (k = 0; k < itmax; k++)
+    {
+        mtrxcpy(u0, u);
+        for (i = 1; i < nx - 1; i++)
+        {
+            for (j = 1; j < ny - 1; j++)
+            {
+                u.M[i][j] = beta * (dy * dy * (u.M[i + 1][j] + u.M[i - 1][j]) + dx * dx * (u.M[i][j + 1] + u.M[i][j - 1]) - dx * dx * dy * dy * f.M[i][j]) / (2 * (dx * dx + dy * dy)) + (1 - beta) * u0.M[i][j];
+            }
+        }
+        e = error(u, u0);
+        if (e < tol)
+        {
+            poisson_log_message(log_file, "Poisson equation solved with %d iterations - root-sum-of-squares error: %E\n", k, e);
+            u0.M = freem(u0);
+            return u;
+        }
+    }
+    poisson_log_message(log_file, "Error: maximum number of iterations achieved for Poisson equation.\n");
 
     u.M = freem(u);
     u0.M = freem(u0);

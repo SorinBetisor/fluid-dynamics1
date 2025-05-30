@@ -19,6 +19,9 @@ typedef struct {
     int output_interval; // Output interval for .vtk files
     int poisson_type;   // 1 - no relaxation | 2 - successive overrelaxation
     
+    // Performance parameters
+    int openmp_enabled; // 0 - disabled, 1 - enabled
+    
     // Boundary conditions (Dirichlet)
     double ui;          // internal field for u
     double vi;          // internal field for v
@@ -37,5 +40,6 @@ Config load_default_config(void);
 Config load_config_from_file(const char* filename);
 void print_config(const Config* config);
 void print_usage(const char* program_name);
+void print_openmp_status(const Config* config);
 
 #endif // CONFIG_H 

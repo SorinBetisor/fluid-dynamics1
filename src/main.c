@@ -3,12 +3,26 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include <stdarg.h>
 #include "linearalg.h"
 #include "finitediff.h"
 #include "utils.h"
 #include "poisson.h"
 #include "fluiddyn.h"
 #include "config.h"
+// #include <omp.h>
+
+// Helper function for logging to file only
+void log_message(FILE *log_file, const char *format, ...) {
+    // Only log to file if it's available
+    if (log_file != NULL) {
+        va_list args;
+        va_start(args, format);
+        vfprintf(log_file, format, args);
+        va_end(args);
+        fflush(log_file);
+    }
+}
 
 int main(int argc, char *argv[])
 {
@@ -16,6 +30,8 @@ int main(int argc, char *argv[])
     int i, j, t;
     Config config;
     char output_dir[256] = "./output"; // Default output directory
+
+    double start_time = clock();
 
     // Parse command line arguments
     if (argc == 1) {
@@ -43,6 +59,8 @@ int main(int argc, char *argv[])
             printf("  poisson_tol  - Poisson tolerance (default: 1E-3)\n");
             printf("  output_interval - Output interval for VTK files (default: 10)\n");
             printf("  poisson_type - Poisson solver type: 1=no relaxation, 2=SOR (default: 2)\n");
+            printf("\nPerformance Parameters:\n");
+            printf("  openmp_enabled - Enable OpenMP parallelization: 0=disabled, 1=enabled (default: 1 if compiled with OpenMP)\n");
             printf("\nBoundary Conditions:\n");
             printf("  ui           - Internal u field (default: 0.0)\n");
             printf("  vi           - Internal v field (default: 0.0)\n");
@@ -73,6 +91,9 @@ int main(int argc, char *argv[])
     // Print the configuration being used
     print_config(&config);
 
+    // Print OpenMP status information
+    print_openmp_status(&config);
+
     // Extract configuration values for easier access
     double Re = config.Re;
     int Lx = config.Lx;
@@ -87,6 +108,9 @@ int main(int argc, char *argv[])
     double poisson_tol = config.poisson_tol;
     int output_interval = config.output_interval;
     int poisson_type = config.poisson_type;
+    
+    // Configure OpenMP for linear algebra operations
+    set_openmp_config(config.openmp_enabled);
     
     // Boundary conditions
     double ui = config.ui;
@@ -190,9 +214,63 @@ int main(int argc, char *argv[])
         }
     }
 
+    // Timing variables
+    double iteration_start_time, iteration_end_time, iteration_time;
+    double total_elapsed_time, avg_iteration_time, estimated_remaining_time;
+    double simulation_start_time = clock(); // More descriptive name for overall simulation timing
+
+    // Setup logging
+    char log_dir[512] = "./output/logs";
+    char log_filename[1024];  // Increased from 512 to 1024 to accommodate log_dir + run_name + ".txt"
+    char run_name[256] = "default";
+    FILE *log_file = NULL;
+    
+    // Extract run name from output directory
+    if (strstr(output_dir, "./output/") != NULL) {
+        // If output_dir is like "./output/run_name", extract "run_name"
+        const char *run_start = output_dir + strlen("./output/");
+        if (strlen(run_start) > 0) {
+            strncpy(run_name, run_start, sizeof(run_name) - 1);
+            run_name[sizeof(run_name) - 1] = '\0';
+        }
+    }
+    
+    // Create log filename
+    snprintf(log_filename, sizeof(log_filename), "%s/%s.txt", log_dir, run_name);
+    
+    // Create logs directory (platform-independent approach)
+    #ifdef _WIN32
+        system("if not exist output\\logs mkdir output\\logs");
+    #else
+        system("mkdir -p output/logs");
+    #endif
+    
+    // Open log file
+    log_file = fopen(log_filename, "w");
+    if (log_file == NULL) {
+        printf("Warning: Could not create log file %s. Logging to console instead.\n", log_filename);
+    } else {
+        printf("Logging simulation progress to: %s\n", log_filename);
+        
+        // Write header to log file
+        fprintf(log_file, "=== Fluid Dynamics Simulation Log ===\n");
+        fprintf(log_file, "Run name: %s\n", run_name);
+        fprintf(log_file, "Output directory: %s\n", output_dir);
+        fprintf(log_file, "Reynolds number: %.2f\n", Re);
+        fprintf(log_file, "Grid size: %dx%d\n", nx, ny);
+        fprintf(log_file, "Time step: %.6f\n", dt);
+        fprintf(log_file, "Final time: %.2f\n", tf);
+        fprintf(log_file, "Max iterations: %d\n", it_max + 1);
+        fprintf(log_file, "OpenMP enabled: %s\n", config.openmp_enabled ? "Yes" : "No");
+        fprintf(log_file, "=====================================\n\n");
+        fflush(log_file);
+    }
+
     // Main time loop
     for (t = 0; t <= it_max; t++)
     {
+        iteration_start_time = clock(); // Start timing this iteration
+        
         // Initialize variables
 
         // Boundary conditions
@@ -264,11 +342,11 @@ int main(int argc, char *argv[])
         invsig(w);
         if (poisson_type == 1)
         {
-            psi = poisson(w, dx, dy, poisson_max_it, poisson_tol);
+            psi = poisson_log(w, dx, dy, poisson_max_it, poisson_tol, log_file);
         }
         else if (poisson_type == 2)
         {
-            psi = poisson_SOR(w, dx, dy, poisson_max_it, poisson_tol, beta);
+            psi = poisson_SOR_log(w, dx, dy, poisson_max_it, poisson_tol, beta, log_file);
         }
         else
         {
@@ -309,11 +387,25 @@ int main(int argc, char *argv[])
         dudx = reshape(dudx0, nx, ny);
         dvdy = reshape(dvdy0, nx, ny);
         check_continuity = continuity(dudx, dvdy);
-        printf("Iteration: %d | ", t);
-        printf("Time: %lf | ", (double)t * dt);
-        printf("Progress: %.2lf%%\n", (double)100 * t / it_max);
-        printf("Continuity max: %E | ", maxel(check_continuity));
-        printf("Continuity min: %E\n", minel(check_continuity));
+        
+        iteration_end_time = clock(); // End timing this iteration
+        iteration_time = (double)(iteration_end_time - iteration_start_time) / CLOCKS_PER_SEC;
+        total_elapsed_time = (double)(iteration_end_time - simulation_start_time) / CLOCKS_PER_SEC;
+        avg_iteration_time = total_elapsed_time / (t + 1);
+        estimated_remaining_time = avg_iteration_time * (it_max - t);
+        
+        log_message(log_file, "Iteration: %d | ", t);
+        log_message(log_file, "Time: %lf | ", (double)t * dt);
+        log_message(log_file, "Progress: %.2lf%% | ", (double)100 * t / it_max);
+        log_message(log_file, "Iter time: %.3f s\n", iteration_time);
+        log_message(log_file, "Continuity max: %E | ", maxel(check_continuity));
+        log_message(log_file, "Continuity min: %E | ", minel(check_continuity));
+        log_message(log_file, "Elapsed: %.1f s | ", total_elapsed_time);
+        if (t > 0) {
+            log_message(log_file, "Est. remaining: %.1f s\n", estimated_remaining_time);
+        } else {
+            log_message(log_file, "Est. remaining: -- s\n");
+        }
 
         u0.M = freem(u0);
         v0.M = freem(v0);
@@ -362,6 +454,22 @@ int main(int argc, char *argv[])
     DY2.M = freem(DY2);
 
     printf("Simulation complete!\n");
-
+    double end_time = clock();
+    double total_simulation_time = (double)(end_time - simulation_start_time) / CLOCKS_PER_SEC;
+    double setup_time = (double)(simulation_start_time - start_time) / CLOCKS_PER_SEC;
+    
+    log_message(log_file, "\n=== Timing Summary ===\n");
+    log_message(log_file, "Setup time: %.4f seconds\n", setup_time);
+    log_message(log_file, "Simulation time: %.2f seconds\n", total_simulation_time);
+    log_message(log_file, "Total program time: %.2f seconds\n", (double)(end_time - start_time) / CLOCKS_PER_SEC);
+    log_message(log_file, "Average iteration time: %.4f seconds\n", total_simulation_time / (it_max + 1));
+    log_message(log_file, "Iterations completed: %d\n", it_max + 1);
+    log_message(log_file, "======================\n");
+    
+    // Close log file
+    if (log_file != NULL) {
+        fclose(log_file);
+        printf("Log saved to: %s\n", log_filename);
+    }
     return 0;
 }
