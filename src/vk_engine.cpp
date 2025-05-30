@@ -508,6 +508,84 @@ VkPipeline VulkanEngine::create_compute_pipeline(const std::string &spvPath) {
 }
 
 void VulkanEngine::dispatch_fluid_simulation(VkCommandBuffer cmd) {
+  auto debug = [this]() {
+    std::vector<float> Vorticity = read_buffer_to_cpu<float>(
+        _fluidVorticityBuffer, _fluidGridDimensions.x * _fluidGridDimensions.y);
+    std::vector<glm::vec2> Velocity = read_buffer_to_cpu<glm::vec2>(
+        _fluidVelocityBuffer, _fluidGridDimensions.x * _fluidGridDimensions.y);
+    std::vector<float> Pressure = read_buffer_to_cpu<float>(
+        _fluidPressureBuffer, _fluidGridDimensions.x * _fluidGridDimensions.y);
+    std::vector<float> StreamFunction = read_buffer_to_cpu<float>(
+        _fluidStreamFunctionBuffer,
+        _fluidGridDimensions.x * _fluidGridDimensions.y);
+
+    bool hadNaN = false;
+    bool hadInf = false;
+    for (size_t i = 0; i < _fluidGridDimensions.x * _fluidGridDimensions.y;
+         i++) {
+      // Calculate grid position
+      size_t x = i % _fluidGridDimensions.x;
+      size_t y = i / _fluidGridDimensions.x;
+
+      bool hasNaN = false;
+      bool hasInf = false;
+      std::string nanFields;
+      std::string infFields;
+
+      // Check Vorticity
+      if (std::isnan(Vorticity[i])) {
+        hasNaN = true;
+        hadNaN = true;
+        nanFields += "Vorticity ";
+      } else if (std::isinf(Vorticity[i])) {
+        hasInf = true;
+        hadInf = true;
+        infFields += "Vorticity ";
+      }
+
+      // Check Velocity
+      if (std::isnan(Velocity[i].x) || std::isnan(Velocity[i].y)) {
+        hasNaN = true;
+        hadNaN = true;
+        nanFields += "Velocity ";
+      } else if (std::isinf(Velocity[i].x) || std::isinf(Velocity[i].y)) {
+        hasInf = true;
+        hadInf = true;
+        infFields += "Velocity ";
+      }
+
+      // Check Pressure
+      if (std::isnan(Pressure[i])) {
+        hasNaN = true;
+        nanFields += "Pressure ";
+      } else if (std::isinf(Pressure[i])) {
+        hasInf = true;
+        infFields += "Pressure ";
+      }
+
+      // Check StreamFunction
+      if (std::isnan(StreamFunction[i])) {
+        hasNaN = true;
+        hadNaN = true;
+        nanFields += "StreamFunction ";
+      } else if (std::isinf(StreamFunction[i])) {
+        hasInf = true;
+        hadInf = true;
+        infFields += "StreamFunction ";
+      }
+
+      if (hasNaN) {
+        fmt::println("NaN detected at grid position ({}, {}): {}", x, y,
+                     nanFields);
+      } else if (hasInf) {
+        fmt::println("Inf detected at grid position ({}, {}): {}", x, y,
+                     infFields);
+      }
+    }
+    if (hadNaN || hadInf)
+      throw std::runtime_error("NaN values detected in simulation");
+  };
+
   // Helper to bind pipeline, descriptors, and push constants then dispatch
   auto run_compute_pass = [&](VkPipeline pipeline) {
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline);
@@ -545,15 +623,19 @@ void VulkanEngine::dispatch_fluid_simulation(VkCommandBuffer cmd) {
                                  sizeof(glm::vec2)};
 
   // Push constants setup (once) PARAMETERS
-  _fluidSimConstants.gridDim = _fluidGridDimensions;
-  _fluidSimConstants.deltaTime = 0.1f; // Adjust as needed
+  _fluidSimConstants.gridDim = _fluidGridDimensions; // 256x256
+  _fluidSimConstants.deltaTime = 0.00000001f;
   _fluidSimConstants.density = 1.0f;
-  _fluidSimConstants.viscosity = 0.001f; // Adjust as needed for Reynolds number
-  _fluidSimConstants.numPressureIterations =
-      50;                                // SOR iterations for Poisson/Pressure
-  _fluidSimConstants.omegaSOR = 1.7f;    // SOR relaxation factor
-  _fluidSimConstants.lidVelocity = 1.0f; // Crucial for driving the flow
-  _fluidSimConstants.h = 1.0f;
+  _fluidSimConstants.viscosity = 10.0f;
+  _fluidSimConstants.numPressureIterations = 10000;
+  _fluidSimConstants.numOverallIterations = 1;
+  _fluidSimConstants.omegaSOR = 1.0f;
+  _fluidSimConstants.lidVelocity = 10.0f;
+  _fluidSimConstants.h = 1.0f / static_cast<float>(_fluidGridDimensions.x);
+
+  // for numerical stability:
+  //  deltaTime <= min( h/lidVelocity, 0.25 * h^2 / viscosity )
+
   // --- Simulation Cycle ---
   // Initial state: _fluidVorticityBuffer has initial data. _fluidVelocityBuffer
   // is zero.
@@ -571,6 +653,8 @@ void VulkanEngine::dispatch_fluid_simulation(VkCommandBuffer cmd) {
   create_barrier(
       VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
       VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT);
+  fmt::println("Advection step completed.");
+  debug();
 
   // 2. Solve Poisson for Stream Function: ∇²ψ = -ω
   //    Inputs: _fluidVorticityBuffer (ω)
@@ -596,6 +680,8 @@ void VulkanEngine::dispatch_fluid_simulation(VkCommandBuffer cmd) {
   create_barrier(
       VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
       VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT);
+  fmt::println("Poisson step completed.");
+  debug();
 
   // 3. Calculate Velocity from Stream Function: u = ∇×ψ
   //    Inputs: _fluidStreamFunctionBuffer (ψ)
@@ -612,6 +698,8 @@ void VulkanEngine::dispatch_fluid_simulation(VkCommandBuffer cmd) {
   create_barrier(
       VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
       VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT);
+  fmt::println("Velocity calculation step completed.");
+  debug();
 
   // 4. (Optional but often important) Update Vorticity from Velocity (ω = ∇×u),
   // especially for boundaries
@@ -630,30 +718,36 @@ void VulkanEngine::dispatch_fluid_simulation(VkCommandBuffer cmd) {
   create_barrier(
       VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
       VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT);
+  fmt::println("Vorticity step completed.");
+  debug();
 
-  // 5. Optional Pressure Pass (if needed for visualization or other physics)
-  //    Usually, for incompressible flow, pressure ensures ∇·u = 0.
-  //    In vorticity-streamfunction, this is implicitly handled if ψ is solved
-  //    correctly. This pressure pass might be for deriving P from u,v (e.g.,
-  //    solving ∇²P = -∇·(u·∇u)).
-  if (_pressurePipeline != VK_NULL_HANDLE) {
-    for (int i = 0; i < _fluidSimConstants.numPressureIterations; ++i) {
-      run_compute_pass(_pressurePipeline);
-      create_barrier(
-          VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
-          VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT);
-      vkCmdCopyBuffer(cmd, _fluidTempScalarBuffer.buffer,
-                      _fluidPressureBuffer.buffer, 1, &copyRegionScalar);
-      if (i < _fluidSimConstants.numPressureIterations - 1) {
-        create_barrier(VK_PIPELINE_STAGE_2_TRANSFER_BIT,
-                       VK_ACCESS_2_TRANSFER_WRITE_BIT,
-                       VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-                       VK_ACCESS_2_SHADER_READ_BIT);
-      }
-    }
-    // No barrier needed after final copy if pressure isn't read by compute
-    // immediately after
-  }
+  // // 5. Optional Pressure Pass (if needed for visualization or other physics)
+  // //    Usually, for incompressible flow, pressure ensures ∇·u = 0.
+  // //    In vorticity-streamfunction, this is implicitly handled if ψ is
+  // solved
+  // //    correctly. This pressure pass might be for deriving P from u,v (e.g.,
+  // //    solving ∇²P = -∇·(u·∇u)).
+  // if (_pressurePipeline != VK_NULL_HANDLE) {
+  //   for (int i = 0; i < _fluidSimConstants.numPressureIterations; ++i) {
+  //     run_compute_pass(_pressurePipeline);
+  //     create_barrier(
+  //         VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+  //         VK_ACCESS_2_SHADER_WRITE_BIT, VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+  //         VK_ACCESS_2_TRANSFER_READ_BIT);
+  //     vkCmdCopyBuffer(cmd, _fluidTempScalarBuffer.buffer,
+  //                     _fluidPressureBuffer.buffer, 1, &copyRegionScalar);
+  //     if (i < _fluidSimConstants.numPressureIterations - 1) {
+  //       create_barrier(VK_PIPELINE_STAGE_2_TRANSFER_BIT,
+  //                      VK_ACCESS_2_TRANSFER_WRITE_BIT,
+  //                      VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+  //                      VK_ACCESS_2_SHADER_READ_BIT);
+  //     }
+  //   }
+  //   // No barrier needed after final copy if pressure isn't read by compute
+  //   // immediately after
+  // }
+  // fmt::println("Pressure step completed.");
+  // debug();
 }
 
 void VulkanEngine::simulation_step() {
@@ -687,29 +781,29 @@ void VulkanEngine::simulation_step() {
 void VulkanEngine::run_simulation_loop() {
   bool bQuit = false;
 
-  while (!bQuit && _frameNumber < 10) {
+  while (!bQuit && _frameNumber < 10000) {
     simulation_step();
     // Read and print buffer contents
-    uint32_t numCells = _fluidGridDimensions.x * _fluidGridDimensions.y;
+    // uint32_t numCells = _fluidGridDimensions.x * _fluidGridDimensions.y;
 
-    fmt::println("---- Iteration step {} ----", _frameNumber);
+    // fmt::println("---- Iteration step {} ----", _frameNumber);
 
-    // Velocity Buffer
-    std::vector<glm::vec2> velocities =
-        read_buffer_to_cpu<glm::vec2>(_fluidVelocityBuffer, numCells);
+    // // Velocity Buffer
+    // std::vector<glm::vec2> velocities =
+    //     read_buffer_to_cpu<glm::vec2>(_fluidVelocityBuffer, numCells);
 
-    // Vorticity Buffer
-    std::vector<float> vorticities =
-        read_buffer_to_cpu<float>(_fluidVorticityBuffer, numCells);
+    // // Vorticity Buffer
+    // std::vector<float> vorticities =
+    //     read_buffer_to_cpu<float>(_fluidVorticityBuffer, numCells);
 
-    // Pressure Buffer
-    std::vector<float> pressures =
-        read_buffer_to_cpu<float>(_fluidPressureBuffer, numCells);
+    // // Pressure Buffer
+    // std::vector<float> pressures =
+    //     read_buffer_to_cpu<float>(_fluidPressureBuffer, numCells);
 
-    // Stream Function Buffer
-    std::vector<float> streamFuncs =
-        read_buffer_to_cpu<float>(_fluidStreamFunctionBuffer, numCells);
-    fmt::println("---- End of Frame {} ----", _frameNumber);
+    // // Stream Function Buffer
+    // std::vector<float> streamFuncs =
+    //     read_buffer_to_cpu<float>(_fluidStreamFunctionBuffer, numCells);
+    // fmt::println("---- End of Frame {} ----", _frameNumber);
 
     _frameNumber++;
 

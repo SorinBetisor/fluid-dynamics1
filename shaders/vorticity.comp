@@ -1,10 +1,13 @@
 #version 450
+precision highp float;
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 layout(set = 0, binding = 0) readonly buffer VelocityBuffer {
     vec2 velocities[];
 };
-// Binding 1 (VorticityBuffer) is not strictly needed here if we compute fresh vorticity
+layout(set = 0, binding = 1) readonly buffer VorticityBuffer {
+    float vorticity[];
+};
 layout(set = 0, binding = 3) readonly buffer StreamFunctionBuffer {
     float streamFuncScalars[];
 };
@@ -28,63 +31,125 @@ uint getIndex(uvec2 coord) {
     return coord.y * pc.gridDim.x + coord.x;
 }
 
+// Helper to sample velocity, applying boundary conditions for "ghost" cells
+vec2 sampleVelocityWithBC(uvec2 coord, uvec2 original_id) {
+    // Top Lid
+    if (coord.y == pc.gridDim.y - 1 && coord.y == original_id.y) return vec2(pc.lidVelocity, 0.0); // If current point is on lid
+    if (coord.y >= pc.gridDim.y) return vec2(pc.lidVelocity, 0.0); // Point above lid
+    // Bottom Wall
+    if (coord.y == 0 && coord.y == original_id.y) return vec2(0.0, 0.0);
+    if (coord.y == uvec2(-1).y) return vec2(0.0, 0.0); // Point below bottom
+    // Left Wall
+    if (coord.x == 0 && coord.x == original_id.x) return vec2(0.0, 0.0);
+    if (coord.x == uvec2(-1).x) return vec2(0.0, 0.0); // Point left of left
+    // Right Wall
+    if (coord.x == pc.gridDim.x - 1 && coord.x == original_id.x) return vec2(0.0, 0.0);
+    if (coord.x >= pc.gridDim.x) return vec2(0.0, 0.0); // Point right of right
+
+    // If not a ghost cell, sample from buffer
+    return velocities[getIndex(coord)];
+}
+
 void main() {
     uvec2 id = gl_GlobalInvocationID.xy;
-    uint out_idx = getIndex(id);
-
-    float u_curr = velocities[getIndex(id)].x;
-    float v_curr = velocities[getIndex(id)].y;
-
-    float u_up, u_down, v_left, v_right;
-    float du_dy, dv_dx;
-
-    // Handle boundaries for derivatives
-    // Top boundary (y = gridDim.y - 1)
-    if (id.y == pc.gridDim.y - 1) {
-        u_up = pc.lidVelocity; // Lid velocity
-        u_down = velocities[getIndex(uvec2(id.x, id.y - 1))].x;
-        du_dy = (u_up - u_down) / pc.h; // One-sided difference (top physical boundary)
+    if (id.x >= pc.gridDim.x || id.y >= pc.gridDim.y) {
+        return;
     }
-    // Bottom boundary (y = 0)
-    else if (id.y == 0) {
-        u_up = velocities[getIndex(uvec2(id.x, id.y + 1))].x;
-        u_down = 0.0; // Wall velocity
-        du_dy = (u_up - u_down) / pc.h; // One-sided difference (bottom physical boundary)
-    }
-    // Interior y
-    else {
-        u_up = velocities[getIndex(uvec2(id.x, id.y + 1))].x;
-        u_down = velocities[getIndex(uvec2(id.x, id.y - 1))].x;
-        du_dy = (u_up - u_down) / (2.0 * pc.h); // Central difference
+    uint current_idx = getIndex(id);
+
+    // float h_val = pc.h;
+    // if (h_val < 1e-9) h_val = 1e-9;
+    // float two_h = 2.0 * h_val;
+    //
+    // float dv_dx, du_dy;
+    //
+    // // dv/dx
+    // // For interior points or points not on left/right wall for this derivative
+    // if (id.x > 0 && id.x < pc.gridDim.x - 1) {
+    //     vec2 vel_xp = velocities[getIndex(id + uvec2(1, 0))];
+    //     vec2 vel_xn = velocities[getIndex(id - uvec2(1, 0))];
+    //     dv_dx = (vel_xp.y - vel_xn.y) / two_h;
+    // } else if (id.x == 0) { // Left wall
+    //     vec2 vel_xp = velocities[getIndex(id + uvec2(1, 0))];
+    //     vec2 vel_x_wall = vec2(0.0, 0.0); // v=0 on left wall
+    //     dv_dx = (vel_xp.y - vel_x_wall.y) / h_val; // Forward difference
+    // } else { // id.x == pc.gridDim.x - 1, Right wall
+    //     vec2 vel_xn = velocities[getIndex(id - uvec2(1, 0))];
+    //     vec2 vel_x_wall = vec2(0.0, 0.0); // v=0 on right wall
+    //     dv_dx = (vel_x_wall.y - vel_xn.y) / h_val; // Backward difference
+    // }
+    //
+    // // du/dy
+    // // For interior points or points not on top/bottom wall for this derivative
+    // if (id.y > 0 && id.y < pc.gridDim.y - 1) {
+    //     vec2 vel_yp = velocities[getIndex(id + uvec2(0, 1))];
+    //     vec2 vel_yn = velocities[getIndex(id - uvec2(0, 1))];
+    //     du_dy = (vel_yp.x - vel_yn.x) / two_h;
+    // } else if (id.y == 0) { // Bottom wall
+    //     vec2 vel_yp = velocities[getIndex(id + uvec2(0, 1))];
+    //     vec2 vel_y_wall = vec2(0.0, 0.0); // u=0 on bottom wall
+    //     du_dy = (vel_yp.x - vel_y_wall.x) / h_val; // Forward difference
+    // } else { // id.y == pc.gridDim.y - 1, Top Lid
+    //     vec2 vel_yn = velocities[getIndex(id - uvec2(0, 1))]; // u-velocity of cell below lid
+    //     vec2 vel_y_wall = vec2(pc.lidVelocity, 0.0);
+    //     du_dy = (vel_y_wall.x - vel_yn.x) / h_val;
+    //     // dv_dx term also contributes
+    // }
+    //
+    // tempScalar[current_idx] = dv_dx - du_dy;
+
+    float new_vorticity_val;
+
+    float h_eff = pc.h;
+    if (h_eff < 1e-9f) h_eff = 1e-9f;
+    float h_sq = h_eff * h_eff;
+    if (h_sq < 1e-18f) h_sq = 1e-18f;
+
+    // Boundary Conditions using Thom's/Woods' formulas (ψ_wall = 0)
+    if (id.y == pc.gridDim.y - 1) { // Top Lid
+        if (id.y > 0) {
+            float psi_south = streamFuncScalars[getIndex(uvec2(id.x, id.y - 1))];
+            new_vorticity_val = (-2.0f * psi_south / h_sq) - (2.0f * pc.lidVelocity / h_eff);
+        } else {
+            new_vorticity_val = -2.0f * pc.lidVelocity / h_eff;
+        }
+    } else if (id.y == 0) { // Bottom Wall
+        if (id.y < pc.gridDim.y - 1) {
+            float psi_north = streamFuncScalars[getIndex(uvec2(id.x, id.y + 1))];
+            new_vorticity_val = -2.0f * psi_north / h_sq;
+        } else {
+            new_vorticity_val = 0.0f;
+        }
+    } else if (id.x == 0) { // Left Wall
+        if (id.x < pc.gridDim.x - 1) {
+            float psi_east = streamFuncScalars[getIndex(uvec2(id.x + 1, id.y))];
+            new_vorticity_val = -2.0f * psi_east / h_sq;
+        } else {
+            new_vorticity_val = 0.0f;
+        }
+    } else if (id.x == pc.gridDim.x - 1) { // Right Wall
+        if (id.x > 0) {
+            float psi_west = streamFuncScalars[getIndex(uvec2(id.x - 1, id.y))];
+            new_vorticity_val = -2.0f * psi_west / h_sq;
+        } else {
+            new_vorticity_val = 0.0f;
+        }
+    } else {
+        // Interior points: Vorticity IS the advected/diffused vorticity (ω*)
+        new_vorticity_val = vorticity[current_idx];
     }
 
-    // Right boundary (x = gridDim.x - 1)
-    if (id.x == pc.gridDim.x - 1) {
-        v_right = 0.0; // Wall velocity
-        v_left = velocities[getIndex(uvec2(id.x - 1, id.y))].y;
-        dv_dx = (v_right - v_left) / pc.h; // One-sided difference
-    }
-    // Left boundary (x = 0)
-    else if (id.x == 0) {
-        v_right = velocities[getIndex(uvec2(id.x + 1, id.y))].y;
-        v_left = 0.0; // Wall velocity
-        dv_dx = (v_right - v_left) / pc.h; // One-sided difference
-    }
-    // Interior x
-    else {
-        v_right = velocities[getIndex(uvec2(id.x + 1, id.y))].y;
-        v_left = velocities[getIndex(uvec2(id.x - 1, id.y))].y;
-        dv_dx = (v_right - v_left) / (2.0 * pc.h); // Central difference
-    }
+    // Optional: Clamping (try without first, then with a mild one if needed)
+    float reasonable_max_vort = 10.0f * pc.lidVelocity / h_eff;
+    new_vorticity_val = clamp(new_vorticity_val, -reasonable_max_vort, reasonable_max_vort);
 
-    // Specific vorticity boundary conditions from common CFD practice for lid-driven cavity (alternative to above general derivatives):
-    // ω_wall = 2 * (u_neighbor_normal - u_wall_tangential) / h_normal
-    // Bottom wall (y=0): ω = -2 * u(i,1) / h  (since u_wall = 0, v_wall = 0 means dv/dx approx 0 at wall)
-    // Top wall (y=Ny-1): ω = 2 * (pc.lidVelocity - u(i,Ny-2)) / h
-    // Left wall (x=0): ω = 2 * v(1,j) / h
-    // Right wall (x=Nx-1): ω = -2 * v(Nx-2,j) / h
-    // For simplicity here, the general derivative form is kept, but for high accuracy, specific wall vorticity formulas are better.
-    // The C code calculates dvdx and dudy matrices first, then combines. The approach above is cell-local.
+    // if (id.y == pc.gridDim.y - 1) { // Top Lid
+    //     new_vorticity_val = -10.0; // Small, constant, non-zero test value
+    // } else if (id.y == 0 || id.x == 0 || id.x == pc.gridDim.x - 1) { // Other walls
+    //     new_vorticity_val = 0.0;
+    // } else { // Interior
+    //     new_vorticity_val = vorticity[current_idx];
+    // }
 
-    tempScalar[out_idx] = dv_dx - du_dy;
+    tempScalar[current_idx] = new_vorticity_val;
 }

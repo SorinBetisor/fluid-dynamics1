@@ -1,4 +1,7 @@
 #version 450
+
+precision highp float;
+
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 layout(set = 0, binding = 0) readonly buffer VelocityBuffer {
@@ -35,36 +38,68 @@ float sampleWSafe(uvec2 coord) {
 
 void main() {
     uvec2 id = gl_GlobalInvocationID.xy;
+    if (id.x >= pc.gridDim.x || id.y >= pc.gridDim.y) {
+        return;
+    }
     uint current_idx = getIndex(id);
 
-    // For advection/diffusion, boundary cells' vorticity is often set by `vorticity.comp`'s specific boundary formulas.
-    // The `euler` function in C processes all cells. If boundary conditions for vorticity are handled by `vorticity.comp`
-    // this step might only need to operate on interior cells, or use the boundary vorticities as is.
-    // Here, we process all cells, using clamped sampling for neighbors.
-
-    float w_old = vorticity[current_idx];
-    vec2 vel = velocities[current_idx];
+    float w_old_center = vorticity[current_idx]; // ω at t
+    vec2 vel = velocities[current_idx]; // u,v at t (or t*)
 
     // Central differences for derivatives of vorticity
+    // sampleWSafe clamps, which is good for boundaries if you intend to replicate edge values.
+    // Alternatively, for advection/diffusion, boundary cells' vorticity is often set by `vorticity.comp`'s specific boundary formulas
+    // and this shader might only operate on interior cells or use the boundary vorticities as is.
+    // If `vorticity.comp` correctly sets boundary ω, then sampleWSafe is reasonable.
+
     float w_xp = sampleWSafe(id + uvec2(1, 0));
     float w_xn = sampleWSafe(id - uvec2(1, 0));
     float w_yp = sampleWSafe(id + uvec2(0, 1));
     float w_yn = sampleWSafe(id - uvec2(0, 1));
 
-    float dw_dx = (w_xp - w_xn) / (2.0 * pc.h);
-    float dw_dy = (w_yp - w_yn) / (2.0 * pc.h);
+    float h_val = pc.h;
+    if (h_val < 1e-9) h_val = 1e-9; // safety
+    float two_h = 2.0 * h_val;
+    float h_squared = h_val * h_val;
 
-    float d2w_dx2 = (w_xp - 2.0 * w_old + w_xn) / (pc.h * pc.h);
-    float d2w_dy2 = (w_yp - 2.0 * w_old + w_yn) / (pc.h * pc.h);
+    float dw_dx = (w_xp - w_xn) / two_h;
+    float dw_dy = (w_yp - w_yn) / two_h;
+
+    // Laplacian: (w_xp - 2w_old + w_xn)/h² + (w_yp - 2w_old + w_yn)/h²
+    float d2w_dx2 = (w_xp - 2.0 * w_old_center + w_xn) / h_squared;
+    float d2w_dy2 = (w_yp - 2.0 * w_old_center + w_yn) / h_squared;
 
     float advection_term = -vel.x * dw_dx - vel.y * dw_dy;
-    float diffusion_term = pc.viscosity * (d2w_dx2 + d2w_dy2);
+    float diffusion_term = pc.viscosity * (d2w_dx2 + d2w_dy2); // pc.viscosity is ν
 
-    float w_new = w_old + pc.deltaTime * (advection_term + diffusion_term);
+    // Forward Euler time step
+    float w_new = w_old_center + pc.deltaTime * (advection_term + diffusion_term);
 
-    // If current cell IS a boundary, its new value might be overwritten by specific BCs later.
-    // The C code's `euler` updates w, then `main` loop re-calculates boundary `w` from velocities.
-    // This shader computes an intermediate w* for all points.
+    // Clamp to prevent blow-up, though ideally CFL and Re_cell conditions should prevent this.
+    // w_new = clamp(w_new, -1e4, 1e4); // Adjust bounds as needed, or remove if stable
 
+    // float advection_term_x, advection_term_y;
+    //
+    // // Advection in x: -u * dw/dx
+    // if (vel.x > 0.0f) { // Flow is to the right, use value from left (upwind)
+    //     advection_term_x = -vel.x * (w_old_center - w_xn) / h_val;
+    // } else { // Flow is to the left (or zero), use value from right (upwind)
+    //     advection_term_x = -vel.x * (w_xp - w_old_center) / h_val;
+    // }
+    //
+    // // Advection in y: -v * dw/dy
+    // if (vel.y > 0.0f) { // Flow is upwards, use value from below (upwind)
+    //     advection_term_y = -vel.y * (w_old_center - w_yn) / h_val;
+    // } else { // Flow is downwards (or zero), use value from above (upwind)
+    //     advection_term_y = -vel.y * (w_yp - w_old_center) / h_val;
+    // }
+    // float advection_term = advection_term_x + advection_term_y;
+    //
+    // // Diffusion term (remains the same)
+    // float d2w_dx2 = (w_xp - 2.0 * w_old_center + w_xn) / h_squared;
+    // float d2w_dy2 = (w_yp - 2.0 * w_old_center + w_yn) / h_squared;
+    // float diffusion_term = pc.viscosity * (d2w_dx2 + d2w_dy2);
+    //
+    // float w_new = w_old_center + pc.deltaTime * (advection_term + diffusion_term);
     tempScalar[current_idx] = w_new;
 }

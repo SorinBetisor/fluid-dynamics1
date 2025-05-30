@@ -1,4 +1,5 @@
 #version 450
+precision highp float;
 layout(local_size_x = 16, local_size_y = 16, local_size_z = 1) in;
 
 layout(set = 0, binding = 3) readonly buffer StreamFunctionBuffer {
@@ -24,30 +25,59 @@ uint getIndex(uvec2 coord) {
     return coord.y * pc.gridDim.x + coord.x;
 }
 
+// Helper to safely sample stream function.
+// For derivatives, we need values at neighbors. Boundary ψ is 0.
+float samplePsiForDerivative(uvec2 coord) {
+    // If querying a point that IS a boundary or outside, its psi value is 0.
+    if (coord.x == 0 || coord.x == pc.gridDim.x - 1 || coord.y == 0 || coord.y == pc.gridDim.y - 1 ||
+        coord.x >= pc.gridDim.x || coord.x == uvec2(-1).x || // Check for true out-of-bounds
+        coord.y >= pc.gridDim.y || coord.y == uvec2(-1).y) {
+        return 0.0;
+    }
+    // For points just outside the physical boundary (e.g., id.x+1 when id.x is on right edge),
+    // effectively we'd use psi_boundary = 0.
+    // If the point is truly outside the allocated buffer, clamp to stay within.
+    uvec2 clampedCoord = clamp(coord, uvec2(0,0), pc.gridDim - uvec2(1,1));
+    return streamFuncScalars[getIndex(clampedCoord)];
+}
+
+
 void main() {
     uvec2 id = gl_GlobalInvocationID.xy;
+
+    if (id.x >= pc.gridDim.x || id.y >= pc.gridDim.y) {
+        return;
+    }
+
     uint current_idx = getIndex(id);
     vec2 new_vel;
 
-    // Boundary conditions for velocity
-    if (id.y == pc.gridDim.y - 1) { // Top boundary (lid)
+    float two_h = 2.0 * pc.h;
+    if (two_h < 1e-9) two_h = 1e-9; // Prevent division by zero if h is tiny/zero
+
+    // Handle velocity boundary conditions directly
+    if (id.y == pc.gridDim.y - 1) {         // Top boundary (lid)
         new_vel = vec2(pc.lidVelocity, 0.0);
-    } else if (id.y == 0 || id.x == 0 || id.x == pc.gridDim.x - 1) { // Other walls
+    } else if (id.y == 0) {                 // Bottom boundary
+        new_vel = vec2(0.0, 0.0);
+    } else if (id.x == 0) {                 // Left boundary
+        new_vel = vec2(0.0, 0.0);
+    } else if (id.x == pc.gridDim.x - 1) {  // Right boundary
         new_vel = vec2(0.0, 0.0);
     } else {
-        // Interior points: calculate derivatives of ψ
-        // Since ψ=0 on boundaries, one-sided differences are implicitly handled if neighbors are sampled from StreamFunctionBuffer
-        // where boundary psi values are correctly set to 0.
-        float psi_xp = streamFuncScalars[getIndex(id + uvec2(1, 0))];
-        float psi_xn = streamFuncScalars[getIndex(id - uvec2(1, 0))];
-        float psi_yp = streamFuncScalars[getIndex(id + uvec2(0, 1))];
-        float psi_yn = streamFuncScalars[getIndex(id - uvec2(0, 1))];
+        // Interior points: Calculate velocity from stream function derivatives
+        // u = ∂ψ/∂y
+        // v = -∂ψ/∂x
 
-        float dpsi_dx = (psi_xp - psi_xn) / (2.0 * pc.h);
-        float dpsi_dy = (psi_yp - psi_yn) / (2.0 * pc.h);
+        // For ∂ψ/∂y at (i,j): (ψ(i,j+1) - ψ(i,j-1)) / (2h)
+        float psi_yp = streamFuncScalars[getIndex(id + uvec2(0, 1))]; // No abs()
+        float psi_yn = streamFuncScalars[getIndex(id - uvec2(0, 1))]; // No abs()
+        new_vel.x = (psi_yp - psi_yn) / two_h; // u = d(psi)/dy
 
-        new_vel.x = dpsi_dy;
-        new_vel.y = -dpsi_dx;
+        // For ∂ψ/∂x at (i,j): (ψ(i+1,j) - ψ(i-1,j)) / (2h)
+        float psi_xp = streamFuncScalars[getIndex(id + uvec2(1, 0))]; // No abs()
+        float psi_xn = streamFuncScalars[getIndex(id - uvec2(1, 0))]; // No abs()
+        new_vel.y = -(psi_xp - psi_xn) / two_h; // v = -d(psi)/dx
     }
 
     tempVec2[current_idx] = new_vel;
