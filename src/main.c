@@ -112,6 +112,12 @@ int main(int argc, char *argv[])
     // Configure OpenMP for linear algebra operations
     set_openmp_config(config.openmp_enabled);
     
+    // Configure OpenMP for Poisson solver
+    set_poisson_openmp_config(config.openmp_enabled);
+    
+    // Configure OpenMP for fluid dynamics operations
+    set_fluiddyn_openmp_config(config.openmp_enabled);
+    
     // Boundary conditions
     double ui = config.ui;
     double vi = config.vi;

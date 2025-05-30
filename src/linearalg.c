@@ -250,7 +250,7 @@ mtrx mtrxmul(mtrx A, mtrx B)
 
 #ifdef OPENMP_ENABLED
     if (g_openmp_enabled) {
-        #pragma omp parallel for collapse(2) schedule(static) if(A.m > 64 && B.n > 64)
+        #pragma omp parallel for collapse(2) schedule(static) if(A.m >= 128 && B.n >= 128)
         for (i = 0; i < C.m; i++)
         {
             for (j = 0; j < C.n; j++)

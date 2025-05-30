@@ -1,0 +1,104 @@
+=== Fluid Dynamics Simulation Log ===
+Run name: testRunNOOMPHIGHRES
+Output directory: ./output/testRunNOOMPHIGHRES
+Reynolds number: 5000.00
+Grid size: 128x128
+Time step: 0.001000
+Final time: 10.00
+Max iterations: 10000
+OpenMP enabled: No
+=====================================
+
+Poisson equation solved with 79 iterations - root-sum-of-squares error: 4.982399E-04
+Iteration: 0 | Time: 0.000000 | Progress: 0.00% | Iter time: 7.744 s
+Continuity max: 6.326320E-17 | Continuity min: -6.797948E-17 | Elapsed: 7.8 s | Est. remaining: -- s
+Poisson equation solved with 120 iterations - root-sum-of-squares error: 4.987523E-04
+Iteration: 1 | Time: 0.001000 | Progress: 0.01% | Iter time: 7.708 s
+Continuity max: 1.456084E-16 | Continuity min: -1.449036E-16 | Elapsed: 15.5 s | Est. remaining: 77494.5 s
+Poisson equation solved with 137 iterations - root-sum-of-squares error: 4.901375E-04
+Iteration: 2 | Time: 0.002000 | Progress: 0.02% | Iter time: 7.636 s
+Continuity max: 2.081668E-16 | Continuity min: -2.458971E-16 | Elapsed: 23.1 s | Est. remaining: 77106.9 s
+Poisson equation solved with 146 iterations - root-sum-of-squares error: 4.948834E-04
+Iteration: 3 | Time: 0.003000 | Progress: 0.03% | Iter time: 7.759 s
+Continuity max: 3.286217E-16 | Continuity min: -2.667408E-16 | Elapsed: 30.9 s | Est. remaining: 77216.6 s
+Poisson equation solved with 153 iterations - root-sum-of-squares error: 4.921140E-04
+Iteration: 4 | Time: 0.004000 | Progress: 0.04% | Iter time: 7.703 s
+Continuity max: 3.683577E-16 | Continuity min: -4.443806E-16 | Elapsed: 38.6 s | Est. remaining: 77169.4 s
+Poisson equation solved with 158 iterations - root-sum-of-squares error: 4.994104E-04
+Iteration: 5 | Time: 0.005000 | Progress: 0.05% | Iter time: 7.773 s
+Continuity max: 4.594849E-16 | Continuity min: -3.865452E-16 | Elapsed: 46.4 s | Est. remaining: 77250.3 s
+Poisson equation solved with 163 iterations - root-sum-of-squares error: 4.900540E-04
+Iteration: 6 | Time: 0.006000 | Progress: 0.06% | Iter time: 7.778 s
+Continuity max: 3.747003E-16 | Continuity min: -4.557986E-16 | Elapsed: 54.2 s | Est. remaining: 77341.5 s
+Poisson equation solved with 167 iterations - root-sum-of-squares error: 4.853331E-04
+Iteration: 7 | Time: 0.007000 | Progress: 0.07% | Iter time: 7.785 s
+Continuity max: 5.160802E-16 | Continuity min: -4.848552E-16 | Elapsed: 62.0 s | Est. remaining: 77391.8 s
+Poisson equation solved with 170 iterations - root-sum-of-squares error: 4.888346E-04
+Iteration: 8 | Time: 0.008000 | Progress: 0.08% | Iter time: 7.831 s
+Continuity max: 5.360296E-16 | Continuity min: -6.331741E-16 | Elapsed: 69.8 s | Est. remaining: 77480.2 s
+Poisson equation solved with 173 iterations - root-sum-of-squares error: 4.850846E-04
+Iteration: 9 | Time: 0.009000 | Progress: 0.09% | Iter time: 7.727 s
+Continuity max: 7.083093E-16 | Continuity min: -7.788366E-16 | Elapsed: 77.5 s | Est. remaining: 77446.5 s
+Poisson equation solved with 175 iterations - root-sum-of-squares error: 4.939274E-04
+Iteration: 10 | Time: 0.010000 | Progress: 0.10% | Iter time: 7.865 s
+Continuity max: 7.903834E-16 | Continuity min: -7.042977E-16 | Elapsed: 85.4 s | Est. remaining: 77542.8 s
+Poisson equation solved with 177 iterations - root-sum-of-squares error: 4.982443E-04
+Iteration: 11 | Time: 0.011000 | Progress: 0.11% | Iter time: 7.819 s
+Continuity max: 7.762888E-16 | Continuity min: -7.971054E-16 | Elapsed: 93.2 s | Est. remaining: 77600.1 s
+Poisson equation solved with 179 iterations - root-sum-of-squares error: 4.984884E-04
+Iteration: 12 | Time: 0.012000 | Progress: 0.12% | Iter time: 7.870 s
+Continuity max: 8.335346E-16 | Continuity min: -9.304623E-16 | Elapsed: 101.1 s | Est. remaining: 77670.4 s
+Poisson equation solved with 181 iterations - root-sum-of-squares error: 4.951717E-04
+Iteration: 13 | Time: 0.013000 | Progress: 0.13% | Iter time: 7.691 s
+Continuity max: 7.901361E-16 | Continuity min: -7.073335E-16 | Elapsed: 108.8 s | Est. remaining: 77601.9 s
+Poisson equation solved with 183 iterations - root-sum-of-squares error: 4.888100E-04
+Iteration: 14 | Time: 0.014000 | Progress: 0.14% | Iter time: 7.982 s
+Continuity max: 9.003215E-16 | Continuity min: -1.075529E-15 | Elapsed: 116.8 s | Est. remaining: 77735.2 s
+Poisson equation solved with 184 iterations - root-sum-of-squares error: 4.999904E-04
+Iteration: 15 | Time: 0.015000 | Progress: 0.15% | Iter time: 8.027 s
+Continuity max: 1.158795E-15 | Continuity min: -1.126703E-15 | Elapsed: 124.8 s | Est. remaining: 77878.9 s
+Poisson equation solved with 186 iterations - root-sum-of-squares error: 4.885538E-04
+Iteration: 16 | Time: 0.016000 | Progress: 0.16% | Iter time: 8.023 s
+Continuity max: 1.510890E-15 | Continuity min: -1.451096E-15 | Elapsed: 132.9 s | Est. remaining: 78015.4 s
+Poisson equation solved with 187 iterations - root-sum-of-squares error: 4.956276E-04
+Iteration: 17 | Time: 0.017000 | Progress: 0.17% | Iter time: 7.989 s
+Continuity max: 1.288357E-15 | Continuity min: -1.560601E-15 | Elapsed: 140.8 s | Est. remaining: 78104.7 s
+Poisson equation solved with 189 iterations - root-sum-of-squares error: 4.804528E-04
+Iteration: 18 | Time: 0.018000 | Progress: 0.18% | Iter time: 7.931 s
+Continuity max: 1.464107E-15 | Continuity min: -1.366962E-15 | Elapsed: 148.8 s | Est. remaining: 78153.3 s
+Poisson equation solved with 190 iterations - root-sum-of-squares error: 4.841620E-04
+Iteration: 19 | Time: 0.019000 | Progress: 0.19% | Iter time: 7.981 s
+Continuity max: 1.856805E-15 | Continuity min: -1.354819E-15 | Elapsed: 156.8 s | Est. remaining: 78221.2 s
+Poisson equation solved with 191 iterations - root-sum-of-squares error: 4.868210E-04
+Iteration: 20 | Time: 0.020000 | Progress: 0.20% | Iter time: 7.984 s
+Continuity max: 1.419546E-15 | Continuity min: -1.410113E-15 | Elapsed: 164.7 s | Est. remaining: 78283.4 s
+Poisson equation solved with 192 iterations - root-sum-of-squares error: 4.880429E-04
+Iteration: 21 | Time: 0.021000 | Progress: 0.21% | Iter time: 7.949 s
+Continuity max: 1.387779E-15 | Continuity min: -1.578165E-15 | Elapsed: 172.7 s | Est. remaining: 78335.0 s
+Poisson equation solved with 193 iterations - root-sum-of-squares error: 4.881767E-04
+Iteration: 22 | Time: 0.022000 | Progress: 0.22% | Iter time: 7.951 s
+Continuity max: 1.546289E-15 | Continuity min: -1.627171E-15 | Elapsed: 180.7 s | Est. remaining: 78371.1 s
+Poisson equation solved with 194 iterations - root-sum-of-squares error: 4.873690E-04
+Iteration: 23 | Time: 0.023000 | Progress: 0.23% | Iter time: 8.037 s
+Continuity max: 2.252755E-15 | Continuity min: -1.902992E-15 | Elapsed: 188.7 s | Est. remaining: 78439.2 s
+Poisson equation solved with 195 iterations - root-sum-of-squares error: 4.858478E-04
+Iteration: 24 | Time: 0.024000 | Progress: 0.24% | Iter time: 7.998 s
+Continuity max: 1.660998E-15 | Continuity min: -1.876971E-15 | Elapsed: 196.7 s | Est. remaining: 78485.7 s
+Poisson equation solved with 196 iterations - root-sum-of-squares error: 4.832711E-04
+Iteration: 25 | Time: 0.025000 | Progress: 0.25% | Iter time: 8.008 s
+Continuity max: 1.360023E-15 | Continuity min: -1.535230E-15 | Elapsed: 204.7 s | Est. remaining: 78532.2 s
+Poisson equation solved with 197 iterations - root-sum-of-squares error: 4.802317E-04
+Iteration: 26 | Time: 0.026000 | Progress: 0.26% | Iter time: 8.065 s
+Continuity max: 1.942890E-15 | Continuity min: -1.713907E-15 | Elapsed: 212.8 s | Est. remaining: 78603.5 s
+Poisson equation solved with 197 iterations - root-sum-of-squares error: 4.975886E-04
+Iteration: 27 | Time: 0.027000 | Progress: 0.27% | Iter time: 7.911 s
+Continuity max: 1.824929E-15 | Continuity min: -1.857889E-15 | Elapsed: 220.7 s | Est. remaining: 78606.4 s
+Poisson equation solved with 198 iterations - root-sum-of-squares error: 4.932558E-04
+Iteration: 28 | Time: 0.028000 | Progress: 0.28% | Iter time: 7.879 s
+Continuity max: 2.539635E-15 | Continuity min: -1.762479E-15 | Elapsed: 228.6 s | Est. remaining: 78598.0 s
+Poisson equation solved with 199 iterations - root-sum-of-squares error: 4.885678E-04
+Iteration: 29 | Time: 0.029000 | Progress: 0.29% | Iter time: 7.940 s
+Continuity max: 1.831868E-15 | Continuity min: -1.432014E-15 | Elapsed: 236.5 s | Est. remaining: 78609.5 s
+Poisson equation solved with 200 iterations - root-sum-of-squares error: 4.833364E-04
+Iteration: 30 | Time: 0.030000 | Progress: 0.30% | Iter time: 8.027 s
+Continuity max: 2.428613E-15 | Continuity min: -2.393918E-15 | Elapsed: 244.6 s | Est. remaining: 78648.0 s

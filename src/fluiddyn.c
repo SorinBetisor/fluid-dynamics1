@@ -24,6 +24,21 @@
 #include <stdlib.h>
 #include "fluiddyn.h"
 #include "linearalg.h"
+#ifdef OPENMP_ENABLED
+#include <omp.h>
+#endif
+
+// Global OpenMP configuration (matches other modules)
+static int g_openmp_enabled = 0;
+
+// Function to set OpenMP configuration
+void set_fluiddyn_openmp_config(int enabled) {
+#ifdef OPENMP_ENABLED
+    g_openmp_enabled = enabled;
+#else
+    g_openmp_enabled = 0; // Force disable if not compiled with OpenMP
+#endif
+}
 
 /**
  * @brief Advance vorticity field using explicit Euler time integration
@@ -58,14 +73,30 @@ void euler(mtrx w, mtrx dwdx, mtrx dwdy, mtrx d2wdx2, mtrx d2wdy2, mtrx u, mtrx 
     int i, j;
 
     // Apply vorticity transport equation at each grid point
-    for (i = 0; i < w.m; i++)
-    {
-        for (j = 0; j < w.n; j++)
+    if (g_openmp_enabled) {
+#ifdef OPENMP_ENABLED
+        #pragma omp parallel for collapse(2) schedule(static) if(w.m >= 128 && w.n >= 128)
+#endif
+        for (i = 0; i < w.m; i++)
         {
-            // Vorticity transport: ∂ω/∂t = -(u·∇ω) + (1/Re)∇²ω
-            // Convection term: -(u*∂ω/∂x + v*∂ω/∂y)
-            // Diffusion term: (1/Re)*(∂²ω/∂x² + ∂²ω/∂y²)
-            w.M[i][j] = (-u.M[i][j] * dwdx.M[i][j] - v.M[i][j] * dwdy.M[i][j] + (1. / Re) * (d2wdx2.M[i][j] + d2wdy2.M[i][j])) * dt + w.M[i][j];
+            for (j = 0; j < w.n; j++)
+            {
+                // Vorticity transport: ∂ω/∂t = -(u·∇ω) + (1/Re)∇²ω
+                // Convection term: -(u*∂ω/∂x + v*∂ω/∂y)
+                // Diffusion term: (1/Re)*(∂²ω/∂x² + ∂²ω/∂y²)
+                w.M[i][j] = (-u.M[i][j] * dwdx.M[i][j] - v.M[i][j] * dwdy.M[i][j] + (1. / Re) * (d2wdx2.M[i][j] + d2wdy2.M[i][j])) * dt + w.M[i][j];
+            }
+        }
+    } else {
+        for (i = 0; i < w.m; i++)
+        {
+            for (j = 0; j < w.n; j++)
+            {
+                // Vorticity transport: ∂ω/∂t = -(u·∇ω) + (1/Re)∇²ω
+                // Convection term: -(u*∂ω/∂x + v*∂ω/∂y)
+                // Diffusion term: (1/Re)*(∂²ω/∂x² + ∂²ω/∂y²)
+                w.M[i][j] = (-u.M[i][j] * dwdx.M[i][j] - v.M[i][j] * dwdy.M[i][j] + (1. / Re) * (d2wdx2.M[i][j] + d2wdy2.M[i][j])) * dt + w.M[i][j];
+            }
         }
     }
 }
@@ -99,11 +130,24 @@ mtrx continuity(mtrx dudx, mtrx dvdy)
     temp = initm(dudx.m, dudx.n);
 
     // Compute divergence: ∇·u = ∂u/∂x + ∂v/∂y
-    for (i = 0; i < temp.m; i++)
-    {
-        for (j = 0; j < temp.n; j++)
+    if (g_openmp_enabled) {
+#ifdef OPENMP_ENABLED
+        #pragma omp parallel for collapse(2) schedule(static) if(temp.m >= 128 && temp.n >= 128)
+#endif
+        for (i = 0; i < temp.m; i++)
         {
-            temp.M[i][j] = dudx.M[i][j] + dvdy.M[i][j];
+            for (j = 0; j < temp.n; j++)
+            {
+                temp.M[i][j] = dudx.M[i][j] + dvdy.M[i][j];
+            }
+        }
+    } else {
+        for (i = 0; i < temp.m; i++)
+        {
+            for (j = 0; j < temp.n; j++)
+            {
+                temp.M[i][j] = dudx.M[i][j] + dvdy.M[i][j];
+            }
         }
     }
     return temp;
@@ -139,11 +183,24 @@ mtrx vorticity(mtrx dudy, mtrx dvdx)
     temp = initm(dudy.m, dudy.n);
 
     // Compute vorticity: ω = ∇×u = ∂v/∂x - ∂u/∂y
-    for (i = 0; i < temp.m; i++)
-    {
-        for (j = 0; j < temp.n; j++)
+    if (g_openmp_enabled) {
+#ifdef OPENMP_ENABLED
+        #pragma omp parallel for collapse(2) schedule(static) if(temp.m >= 128 && temp.n >= 128)
+#endif
+        for (i = 0; i < temp.m; i++)
         {
-            temp.M[i][j] = dvdx.M[i][j] - dudy.M[i][j];
+            for (j = 0; j < temp.n; j++)
+            {
+                temp.M[i][j] = dvdx.M[i][j] - dudy.M[i][j];
+            }
+        }
+    } else {
+        for (i = 0; i < temp.m; i++)
+        {
+            for (j = 0; j < temp.n; j++)
+            {
+                temp.M[i][j] = dvdx.M[i][j] - dudy.M[i][j];
+            }
         }
     }
     return temp;

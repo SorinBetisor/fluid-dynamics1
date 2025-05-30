@@ -16,4 +16,7 @@ mtrx poisson_SOR(mtrx f, double dx, double dy, int itmax, double tol, double bet
 mtrx poisson_log(mtrx f, double dx, double dy, int itmax, double tol, FILE *log_file);
 mtrx poisson_SOR_log(mtrx f, double dx, double dy, int itmax, double tol, double beta, FILE *log_file);
 
+// OpenMP configuration
+void set_poisson_openmp_config(int enabled);
+
 #endif // POISSON_H_INCLUDED

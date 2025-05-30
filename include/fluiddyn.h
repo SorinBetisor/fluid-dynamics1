@@ -10,4 +10,7 @@ mtrx continuity(mtrx dudx, mtrx dvdy);                                          
 mtrx vorticity(mtrx dvdx, mtrx dudy);                                                                     // computes vorticity
 mtrx pressure(void);                                                                                      // computes pressure
 
+// OpenMP configuration
+void set_fluiddyn_openmp_config(int enabled);
+
 #endif // FLUIDDYN_H_INCLUDED
