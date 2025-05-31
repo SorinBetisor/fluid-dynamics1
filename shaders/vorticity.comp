@@ -19,7 +19,7 @@ layout(push_constant) uniform PushConstants {
     uvec2 gridDim;
     float deltaTime;
     float viscosity;
-    int numPressureIterations;
+    int numJacobiIterations;
     float omegaSOR;
     float lidVelocity;
     float h;

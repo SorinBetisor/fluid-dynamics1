@@ -69,7 +69,7 @@ void VulkanEngine::init_constants() {
       0.0001f; // just for safety this should set to <= .1 * the result you got
                // from the equation above
   _fluidSimConstants.viscosity = 0.001f;
-  _fluidSimConstants.numPressureIterations =
+  _fluidSimConstants.numJacobiIterations =
       1000; // the heigher this number the more (host controll) dispatches of
             // the Jacobi solver there will be
   _fluidSimConstants.omegaSOR =
@@ -684,14 +684,14 @@ void VulkanEngine::dispatch_fluid_simulation(const VkCommandBuffer &cmd) {
   //    Inputs: _fluidVorticityBuffer (ω)
   //    Output: _fluidStreamFunctionBuffer (ψ) (via _fluidTempScalarBuffer)
   //    Shader: _poissonPipeline
-  for (int i = 0; i < _fluidSimConstants.numPressureIterations; ++i) {
+  for (int i = 0; i < _fluidSimConstants.numJacobiIterations; ++i) {
     run_compute_pass(_poissonPipeline);
     create_barrier(
         VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_WRITE_BIT,
         VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_READ_BIT);
     vkCmdCopyBuffer(cmd, _fluidTempScalarBuffer.buffer,
                     _fluidStreamFunctionBuffer.buffer, 1, &copyRegionScalar);
-    if (i < _fluidSimConstants.numPressureIterations - 1) {
+    if (i < _fluidSimConstants.numJacobiIterations - 1) {
       create_barrier(
           VK_PIPELINE_STAGE_2_TRANSFER_BIT, VK_ACCESS_2_TRANSFER_WRITE_BIT,
           VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT, VK_ACCESS_2_SHADER_READ_BIT);
@@ -804,6 +804,8 @@ void VulkanEngine::run_simulation_loop() {
     simulation_step();
     TimePoint iterEnd = Clock::now();
     Duration iterDur = iterEnd - iterStart;
+    // This is the best we can do without pulling the data from the GPU (which
+    // is very slow)
     fmt::println(" Iteration {}, took: {} ms", _frameNumber, iterDur.count());
 
     _frameNumber++;

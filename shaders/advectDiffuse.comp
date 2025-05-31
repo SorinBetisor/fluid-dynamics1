@@ -18,7 +18,7 @@ layout(push_constant) uniform PushConstants {
     uvec2 gridDim; // Grid dimensions (width, height)
     float deltaTime; // Time step Δt
     float viscosity; // Kinematic viscosity ν
-    int numPressureIterations; // Iterations for Poisson solver (max_it for ψ)
+    int numJacobiIterations; // Iterations for Poisson solver (max_it for ψ)
     float omegaSOR; // Relaxation factor for SOR in Poisson solver (ω_SOR)
     float lidVelocity; // Velocity of the top lid (U0)
     float h; // Cell size (Δx = Δy = h)
