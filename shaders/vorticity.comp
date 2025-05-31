@@ -18,10 +18,8 @@ layout(set = 0, binding = 4) writeonly buffer TempScalarBuffer {
 layout(push_constant) uniform PushConstants {
     uvec2 gridDim;
     float deltaTime;
-    float density;
     float viscosity;
     int numPressureIterations;
-    int numOverallIterations;
     float omegaSOR;
     float lidVelocity;
     float h;

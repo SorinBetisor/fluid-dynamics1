@@ -15,10 +15,8 @@ layout(set = 0, binding = 4) writeonly buffer TempScalarBuffer {
 layout(push_constant) uniform PushConstants {
     uvec2 gridDim; // Grid dimensions (width, height)
     float deltaTime; // Time step Δt
-    float density; // Fluid density ρ (not directly used if viscosity is kinematic)
     float viscosity; // Kinematic viscosity ν
     int numPressureIterations; // Iterations for Poisson solver (max_it for ψ)
-    int numOverallIterations; // Total simulation steps (unused in this shader)
     float omegaSOR; // Relaxation factor for SOR in Poisson solver (ω_SOR)
     float lidVelocity; // Velocity of the top lid (U0)
     float h; // Cell size (Δx = Δy = h)
@@ -34,12 +32,11 @@ uint getIndex(uvec2 coord) {
 float samplePsiSafe(uvec2 coord) {
     // If accessing outside, treat as if it's a boundary cell that has psi=0
     if (coord.x >= pc.gridDim.x || coord.x == uvec2(-1).x ||
-        coord.y >= pc.gridDim.y || coord.y == uvec2(-1).y) {
+            coord.y >= pc.gridDim.y || coord.y == uvec2(-1).y) {
         return 0.0; // Dirichlet boundary psi=0
     }
     return streamFuncScalars[getIndex(coord)];
 }
-
 
 void main() {
     uvec2 id = gl_GlobalInvocationID.xy;
@@ -87,3 +84,4 @@ void main() {
 
     tempScalar[current_idx] = psi_new_val;
 }
+

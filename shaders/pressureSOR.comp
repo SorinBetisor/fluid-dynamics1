@@ -15,100 +15,102 @@ layout(set = 0, binding = 4) writeonly buffer TempScalarBuffer {
 layout(push_constant) uniform PushConstants {
     uvec2 gridDim; // Grid dimensions (width, height)
     float deltaTime; // Time step Δt
-    float density; // Fluid density ρ (not directly used if viscosity is kinematic)
     float viscosity; // Kinematic viscosity ν
     int numPressureIterations; // Iterations for Poisson solver (max_it for ψ)
-    int numOverallIterations; // Total simulation steps (unused in this shader)
     float omegaSOR; // Relaxation factor for SOR in Poisson solver (ω_SOR)
     float lidVelocity; // Velocity of the top lid (U0)
     float h; // Cell size (Δx = Δy = h)
 } pc;
 
-uint getIndex(uvec2 coord) {
-    return coord.y * pc.gridDim.x + coord.x;
-}
-
-// Helper to safely sample PressureBuffer with Neumann boundary condition (dP/dn=0 -> P_boundary = P_interior_neighbor)
-float samplePressureNeumann(uvec2 coord, uvec2 id_orig) {
-    // Add corner cases handling
-    if (coord.x >= pc.gridDim.x && coord.y >= pc.gridDim.y) {
-        return pressures[getIndex(uvec2(pc.gridDim.x - 2, pc.gridDim.y - 2))];
-    }
-
-    // Prevent potential overflow/underflow with explicit bounds checking
-    if (coord.x >= pc.gridDim.x || coord.y >= pc.gridDim.y) {
-        return 0.0;
-    }
-
-    // Handle boundaries explicitly
-    if (coord.x >= pc.gridDim.x) return pressures[getIndex(uvec2(pc.gridDim.x - 2, coord.y))];
-    if (coord.x == uvec2(-1).x) return pressures[getIndex(uvec2(1, coord.y))];
-    if (coord.y >= pc.gridDim.y) return pressures[getIndex(uvec2(coord.x, pc.gridDim.y - 2))];
-    if (coord.y == uvec2(-1).y) return pressures[getIndex(uvec2(coord.x, 1))];
-
-    uvec2 clampedCoord = clamp(coord, uvec2(0), pc.gridDim - uvec2(1));
-    return pressures[getIndex(clampedCoord)];
-}
-
 void main() {
-    uvec2 id = gl_GlobalInvocationID.xy;
-    
-    // Early exit if outside grid bounds
-    if (id.x >= pc.gridDim.x || id.y >= pc.gridDim.y) {
-        return;
-    }
-
-    uint current_idx = getIndex(id);
-    float h = max(pc.h, 1e-6); // Prevent division by zero
-
-    // Compute velocity derivatives for the source term F_p
-    // Using central differences, carefully at boundaries for velocity
-    vec2 vel_curr = velocities[current_idx];
-
-    vec2 vel_xp = velocities[getIndex(clamp(id + uvec2(1, 0), uvec2(0), pc.gridDim - uvec2(1)))];
-    vec2 vel_xn = velocities[getIndex(clamp(id - uvec2(1, 0), uvec2(0), pc.gridDim - uvec2(1)))];
-    vec2 vel_yp = velocities[getIndex(clamp(id + uvec2(0, 1), uvec2(0), pc.gridDim - uvec2(1)))];
-    vec2 vel_yn = velocities[getIndex(clamp(id - uvec2(0, 1), uvec2(0), pc.gridDim - uvec2(1)))];
-
-    // Override for physical boundaries if needed
-    if (id.x == 0) vel_xn = vec2(0.0); // Left wall u=0, v=0
-    if (id.x == pc.gridDim.x - 1) vel_xp = vec2(0.0); // Right wall u=0, v=0
-    if (id.y == 0) vel_yn = vec2(0.0); // Bottom wall u=0, v=0
-    if (id.y == pc.gridDim.y - 1) vel_yp = vec2(pc.lidVelocity, 0.0); // Top wall u=U0, v=0
-
-    // Safer derivative calculations with division by h
-    float du_dx = (vel_xp.x - vel_xn.x) / (2.0 * h);
-    float du_dy = (vel_yp.x - vel_yn.x) / (2.0 * h);
-    float dv_dx = (vel_xp.y - vel_xn.y) / (2.0 * h);
-    float dv_dy = (vel_yp.y - vel_yn.y) / (2.0 * h);
-
-    // Clamp derivatives to prevent extreme values
-    du_dx = clamp(du_dx, -1e6, 1e6);
-    du_dy = clamp(du_dy, -1e6, 1e6);
-    dv_dx = clamp(dv_dx, -1e6, 1e6);
-    dv_dy = clamp(dv_dy, -1e6, 1e6);
-
-    float divergence = du_dx + dv_dy;
-    float f_pressure = -(divergence / pc.deltaTime - (du_dx * du_dx + dv_dy * dv_dy + 2.0 * du_dy * dv_dx));
-    float source_term_pressure = max(pc.density, 1e-6) * f_pressure;
-
-    // SOR iteration for Pressure with safety checks
-    float P_old = pressures[current_idx];
-
-    float P_xp = samplePressureNeumann(id + uvec2(1, 0), id);
-    float P_xn = samplePressureNeumann(id - uvec2(1, 0), id);
-    float P_yp = samplePressureNeumann(id + uvec2(0, 1), id);
-    float P_yn = samplePressureNeumann(id - uvec2(0, 1), id);
-
-    float term_P_neighbors = P_xp + P_xn + P_yp + P_yn;
-    float P_GS = 0.25 * (term_P_neighbors + h * h * source_term_pressure);
-    
-    // Clamp omega_SOR to stable range
-    float omega = clamp(pc.omegaSOR, 0.1, 1.9);
-    float P_new = omega * P_GS + (1.0 - omega) * P_old;
-
-    // Final safety clamp
-    P_new = clamp(P_new, -1e6, 1e6);
-
-    tempScalar[current_idx] = P_new;
+    // empty main, as this shader is unused
 }
+
+// uint getIndex(uvec2 coord) {
+//     return coord.y * pc.gridDim.x + coord.x;
+// }
+//
+// // Helper to safely sample PressureBuffer with Neumann boundary condition (dP/dn=0 -> P_boundary = P_interior_neighbor)
+// float samplePressureNeumann(uvec2 coord, uvec2 id_orig) {
+//     // Add corner cases handling
+//     if (coord.x >= pc.gridDim.x && coord.y >= pc.gridDim.y) {
+//         return pressures[getIndex(uvec2(pc.gridDim.x - 2, pc.gridDim.y - 2))];
+//     }
+//
+//     // Prevent potential overflow/underflow with explicit bounds checking
+//     if (coord.x >= pc.gridDim.x || coord.y >= pc.gridDim.y) {
+//         return 0.0;
+//     }
+//
+//     // Handle boundaries explicitly
+//     if (coord.x >= pc.gridDim.x) return pressures[getIndex(uvec2(pc.gridDim.x - 2, coord.y))];
+//     if (coord.x == uvec2(-1).x) return pressures[getIndex(uvec2(1, coord.y))];
+//     if (coord.y >= pc.gridDim.y) return pressures[getIndex(uvec2(coord.x, pc.gridDim.y - 2))];
+//     if (coord.y == uvec2(-1).y) return pressures[getIndex(uvec2(coord.x, 1))];
+//
+//     uvec2 clampedCoord = clamp(coord, uvec2(0), pc.gridDim - uvec2(1));
+//     return pressures[getIndex(clampedCoord)];
+// }
+//
+// void main() {
+//     uvec2 id = gl_GlobalInvocationID.xy;
+//
+//     // Early exit if outside grid bounds
+//     if (id.x >= pc.gridDim.x || id.y >= pc.gridDim.y) {
+//         return;
+//     }
+//
+//     uint current_idx = getIndex(id);
+//     float h = max(pc.h, 1e-6); // Prevent division by zero
+//
+//     // Compute velocity derivatives for the source term F_p
+//     // Using central differences, carefully at boundaries for velocity
+//     vec2 vel_curr = velocities[current_idx];
+//
+//     vec2 vel_xp = velocities[getIndex(clamp(id + uvec2(1, 0), uvec2(0), pc.gridDim - uvec2(1)))];
+//     vec2 vel_xn = velocities[getIndex(clamp(id - uvec2(1, 0), uvec2(0), pc.gridDim - uvec2(1)))];
+//     vec2 vel_yp = velocities[getIndex(clamp(id + uvec2(0, 1), uvec2(0), pc.gridDim - uvec2(1)))];
+//     vec2 vel_yn = velocities[getIndex(clamp(id - uvec2(0, 1), uvec2(0), pc.gridDim - uvec2(1)))];
+//
+//     // Override for physical boundaries if needed
+//     if (id.x == 0) vel_xn = vec2(0.0); // Left wall u=0, v=0
+//     if (id.x == pc.gridDim.x - 1) vel_xp = vec2(0.0); // Right wall u=0, v=0
+//     if (id.y == 0) vel_yn = vec2(0.0); // Bottom wall u=0, v=0
+//     if (id.y == pc.gridDim.y - 1) vel_yp = vec2(pc.lidVelocity, 0.0); // Top wall u=U0, v=0
+//
+//     // Safer derivative calculations with division by h
+//     float du_dx = (vel_xp.x - vel_xn.x) / (2.0 * h);
+//     float du_dy = (vel_yp.x - vel_yn.x) / (2.0 * h);
+//     float dv_dx = (vel_xp.y - vel_xn.y) / (2.0 * h);
+//     float dv_dy = (vel_yp.y - vel_yn.y) / (2.0 * h);
+//
+//     // Clamp derivatives to prevent extreme values
+//     du_dx = clamp(du_dx, -1e6, 1e6);
+//     du_dy = clamp(du_dy, -1e6, 1e6);
+//     dv_dx = clamp(dv_dx, -1e6, 1e6);
+//     dv_dy = clamp(dv_dy, -1e6, 1e6);
+//
+//     float divergence = du_dx + dv_dy;
+//     float f_pressure = -(divergence / pc.deltaTime - (du_dx * du_dx + dv_dy * dv_dy + 2.0 * du_dy * dv_dx));
+//     float source_term_pressure = max(pc.density, 1e-6) * f_pressure;
+//
+//     // SOR iteration for Pressure with safety checks
+//     float P_old = pressures[current_idx];
+//
+//     float P_xp = samplePressureNeumann(id + uvec2(1, 0), id);
+//     float P_xn = samplePressureNeumann(id - uvec2(1, 0), id);
+//     float P_yp = samplePressureNeumann(id + uvec2(0, 1), id);
+//     float P_yn = samplePressureNeumann(id - uvec2(0, 1), id);
+//
+//     float term_P_neighbors = P_xp + P_xn + P_yp + P_yn;
+//     float P_GS = 0.25 * (term_P_neighbors + h * h * source_term_pressure);
+//
+//     // Clamp omega_SOR to stable range
+//     float omega = clamp(pc.omegaSOR, 0.1, 1.9);
+//     float P_new = omega * P_GS + (1.0 - omega) * P_old;
+//
+//     // Final safety clamp
+//     P_new = clamp(P_new, -1e6, 1e6);
+//
+//     tempScalar[current_idx] = P_new;
+// }

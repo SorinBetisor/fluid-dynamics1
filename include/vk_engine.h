@@ -44,15 +44,11 @@ struct FrameData {
 };
 
 struct FluidSimPushConstants {
-  glm::uvec2 gridDim; // Grid dimensions (width, height)
-  float deltaTime;    // Time step Δt
-  float density;   // Fluid density ρ (unused in this vorticity-streamfunction
-                   // formulation)
-  float viscosity; // Kinematic viscosity ν
+  glm::uvec2 gridDim;        // Grid dimensions (width, height)
+  float deltaTime;           // Time step Δt
+  float viscosity;           // Kinematic viscosity ν
   int numPressureIterations; // Iterations for Poisson solver (max_it from
                              // Algorithm 2)
-  int numOverallIterations;  // Total simulation steps (likely for host control,
-                             // unused in this single time-step shader)
   float omegaSOR;    // Relaxation factor for SOR in Poisson solver (ω_SOR from
                      // Algorithm 2)
   float lidVelocity; // Velocity of the top lid (U0)
@@ -65,7 +61,10 @@ public:
   std::string _filePath{};
   bool _isInitialized{false};
   int _frameNumber{0};
-  glm::uvec2 _fluidGridDimensions{256, 256}; // Example fluid grid size
+  glm::uvec2 _fluidGridDimensions{64, 64}; // Example fluid grid size
+
+  uint32_t _numOveralIterations;
+  uint32_t _saveInterval;
 
   VkInstance _instance;
   VkDebugUtilsMessengerEXT _debug_messenger;
@@ -134,7 +133,7 @@ private:
   void init_pipelines();
   void init_fluid_simulation_resources();
 
-  void dispatch_fluid_simulation(VkCommandBuffer cmd);
+  void dispatch_fluid_simulation(const VkCommandBuffer &cmd);
 
   VkPipeline create_compute_pipeline(const std::string &spvPath);
 
@@ -149,4 +148,6 @@ private:
   void write_buffer_to_vtk(const AllocatedBuffer &gpuBuffer,
                            const std::string &dataName,
                            const std::string &baseFilename);
+
+  void init_constants();
 };

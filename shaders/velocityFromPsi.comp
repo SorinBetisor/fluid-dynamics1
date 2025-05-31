@@ -12,10 +12,8 @@ layout(set = 0, binding = 5) writeonly buffer TempVectorBuffer {
 layout(push_constant) uniform PushConstants {
     uvec2 gridDim;
     float deltaTime;
-    float density;
     float viscosity;
     int numPressureIterations;
-    int numOverallIterations;
     float omegaSOR;
     float lidVelocity;
     float h;
@@ -30,17 +28,16 @@ uint getIndex(uvec2 coord) {
 float samplePsiForDerivative(uvec2 coord) {
     // If querying a point that IS a boundary or outside, its psi value is 0.
     if (coord.x == 0 || coord.x == pc.gridDim.x - 1 || coord.y == 0 || coord.y == pc.gridDim.y - 1 ||
-        coord.x >= pc.gridDim.x || coord.x == uvec2(-1).x || // Check for true out-of-bounds
-        coord.y >= pc.gridDim.y || coord.y == uvec2(-1).y) {
+            coord.x >= pc.gridDim.x || coord.x == uvec2(-1).x || // Check for true out-of-bounds
+            coord.y >= pc.gridDim.y || coord.y == uvec2(-1).y) {
         return 0.0;
     }
     // For points just outside the physical boundary (e.g., id.x+1 when id.x is on right edge),
     // effectively we'd use psi_boundary = 0.
     // If the point is truly outside the allocated buffer, clamp to stay within.
-    uvec2 clampedCoord = clamp(coord, uvec2(0,0), pc.gridDim - uvec2(1,1));
+    uvec2 clampedCoord = clamp(coord, uvec2(0, 0), pc.gridDim - uvec2(1, 1));
     return streamFuncScalars[getIndex(clampedCoord)];
 }
-
 
 void main() {
     uvec2 id = gl_GlobalInvocationID.xy;
@@ -56,13 +53,13 @@ void main() {
     if (two_h < 1e-9) two_h = 1e-9; // Prevent division by zero if h is tiny/zero
 
     // Handle velocity boundary conditions directly
-    if (id.y == pc.gridDim.y - 1) {         // Top boundary (lid)
+    if (id.y == pc.gridDim.y - 1) { // Top boundary (lid)
         new_vel = vec2(pc.lidVelocity, 0.0);
-    } else if (id.y == 0) {                 // Bottom boundary
+    } else if (id.y == 0) { // Bottom boundary
         new_vel = vec2(0.0, 0.0);
-    } else if (id.x == 0) {                 // Left boundary
+    } else if (id.x == 0) { // Left boundary
         new_vel = vec2(0.0, 0.0);
-    } else if (id.x == pc.gridDim.x - 1) {  // Right boundary
+    } else if (id.x == pc.gridDim.x - 1) { // Right boundary
         new_vel = vec2(0.0, 0.0);
     } else {
         // Interior points: Calculate velocity from stream function derivatives
