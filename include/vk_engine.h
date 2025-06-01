@@ -61,7 +61,7 @@ public:
   std::string _filePath{};
   bool _isInitialized{false};
   int _frameNumber{0};
-  glm::uvec2 _fluidGridDimensions{256, 256}; // Example fluid grid size
+  glm::uvec2 _fluidGridDimensions{64, 64}; // Example fluid grid size
 
   uint32_t _numOveralIterations;
   uint32_t _saveInterval;

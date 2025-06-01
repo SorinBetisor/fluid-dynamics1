@@ -55,27 +55,28 @@ void main() {
     // Handle velocity boundary conditions directly
     if (id.y == pc.gridDim.y - 1) { // Top boundary (lid)
         new_vel = vec2(pc.lidVelocity, 0.0);
-    } else if (id.y == 0) { // Bottom boundary
-        new_vel = vec2(0.0, 0.0);
-    } else if (id.x == 0) { // Left boundary
-        new_vel = vec2(0.0, 0.0);
-    } else if (id.x == pc.gridDim.x - 1) { // Right boundary
-        new_vel = vec2(0.0, 0.0);
-    } else {
-        // Interior points: Calculate velocity from stream function derivatives
-        // u = ∂ψ/∂y
-        // v = -∂ψ/∂x
-
-        // For ∂ψ/∂y at (i,j): (ψ(i,j+1) - ψ(i,j-1)) / (2h)
-        float psi_yp = streamFuncScalars[getIndex(id + uvec2(0, 1))]; // No abs()
-        float psi_yn = streamFuncScalars[getIndex(id - uvec2(0, 1))]; // No abs()
-        new_vel.x = (psi_yp - psi_yn) / two_h; // u = d(psi)/dy
-
-        // For ∂ψ/∂x at (i,j): (ψ(i+1,j) - ψ(i-1,j)) / (2h)
-        float psi_xp = streamFuncScalars[getIndex(id + uvec2(1, 0))]; // No abs()
-        float psi_xn = streamFuncScalars[getIndex(id - uvec2(1, 0))]; // No abs()
-        new_vel.y = -(psi_xp - psi_xn) / two_h; // v = -d(psi)/dx
     }
+    // } else if (id.y == 0) { // Bottom boundary
+    //     new_vel = vec2(0.0, 0.0);
+    // } else if (id.x == 0) { // Left boundary
+    //     new_vel = vec2(0.0, 0.0);
+    // } else if (id.x == pc.gridDim.x - 1) { // Right boundary
+    //     new_vel = vec2(0.0, 0.0);
+    // } else {
+    // Interior points: Calculate velocity from stream function derivatives
+    // u = ∂ψ/∂y
+    // v = -∂ψ/∂x
+
+    // For ∂ψ/∂y at (i,j): (ψ(i,j+1) - ψ(i,j-1)) / (2h)
+    float psi_yp = streamFuncScalars[getIndex(id + uvec2(0, 1))]; // No abs()
+    float psi_yn = streamFuncScalars[getIndex(id - uvec2(0, 1))]; // No abs()
+    new_vel.x = (psi_yp - psi_yn) / two_h; // u = d(psi)/dy
+
+    // For ∂ψ/∂x at (i,j): (ψ(i+1,j) - ψ(i-1,j)) / (2h)
+    float psi_xp = streamFuncScalars[getIndex(id + uvec2(1, 0))]; // No abs()
+    float psi_xn = streamFuncScalars[getIndex(id - uvec2(1, 0))]; // No abs()
+    new_vel.y = -(psi_xp - psi_xn) / two_h; // v = -d(psi)/dx
+    // }
 
     tempVec2[current_idx] = new_vel;
 }

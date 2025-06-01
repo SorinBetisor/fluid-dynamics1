@@ -31,7 +31,7 @@ uint getIndex(uvec2 coord) {
 // Helper to safely sample vorticity with clamping (replicating edge values)
 float sampleWSafe(uvec2 coord) {
     uvec2 clampedCoord = clamp(coord, uvec2(0, 0), pc.gridDim - uvec2(1, 1));
-    return vorticity[getIndex(clampedCoord)];
+    return vorticity[getIndex(coord)];
 }
 
 void main() {

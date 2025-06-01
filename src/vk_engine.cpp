@@ -66,8 +66,8 @@ void VulkanEngine::init_constants() {
   // Numerical and physical parameters, set up for a 1000 Re test
   _fluidSimConstants.gridDim = _fluidGridDimensions;
   _fluidSimConstants.deltaTime =
-      0.0001f; // just for safety this should set to <= .1 * the result you got
-               // from the equation above
+      0.001f; // just for safety this should set to <= .1 * the result you got
+              // from the equation above
   _fluidSimConstants.viscosity = 0.001f;
   _fluidSimConstants.numJacobiIterations =
       1000; // the heigher this number the more (host controll) dispatches of
@@ -75,8 +75,8 @@ void VulkanEngine::init_constants() {
   _fluidSimConstants.omegaSOR =
       1.0f; // can be increased for faster convergance, 1 is Gauss-Seidel, which
             // is generaly stable
-  _fluidSimConstants.lidVelocity = 1.0f;
   _fluidSimConstants.h = 1.0f / static_cast<float>(_fluidGridDimensions.x);
+  _fluidSimConstants.lidVelocity = _fluidSimConstants.h;
 
   // host controll
   _numOveralIterations = 100000;
@@ -299,6 +299,15 @@ void VulkanEngine::immediate_submit(
 }
 
 void VulkanEngine::cleanup() {
+  write_buffer_to_vtk<glm::vec2>(_fluidVelocityBuffer, "Velocity",
+                                 "cavity_sim");
+  write_buffer_to_vtk<float>(_fluidVorticityBuffer, "Vorticity", "cavity_sim");
+  write_buffer_to_vtk<float>(_fluidStreamFunctionBuffer, "StreamFunction",
+                             "cavity_sim");
+  write_buffer_to_vtk<float>(_fluidPressureBuffer, "Pressure", "cavity_sim");
+
+  fmt::println("Saved simulation state");
+
   if (_isInitialized) {
     vkDeviceWaitIdle(_device);
 

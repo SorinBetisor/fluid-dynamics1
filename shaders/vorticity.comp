@@ -35,13 +35,13 @@ vec2 sampleVelocityWithBC(uvec2 coord, uvec2 original_id) {
     if (coord.y == pc.gridDim.y - 1 && coord.y == original_id.y) return vec2(pc.lidVelocity, 0.0); // If current point is on lid
     if (coord.y >= pc.gridDim.y) return vec2(pc.lidVelocity, 0.0); // Point above lid
     // Bottom Wall
-    if (coord.y == 0 && coord.y == original_id.y) return vec2(0.0, 0.0);
+    // if (coord.y == 0 && coord.y == original_id.y) return vec2(0.0, 0.0);
     if (coord.y == uvec2(-1).y) return vec2(0.0, 0.0); // Point below bottom
     // Left Wall
-    if (coord.x == 0 && coord.x == original_id.x) return vec2(0.0, 0.0);
+    // if (coord.x == 0 && coord.x == original_id.x) return vec2(0.0, 0.0);
     if (coord.x == uvec2(-1).x) return vec2(0.0, 0.0); // Point left of left
     // Right Wall
-    if (coord.x == pc.gridDim.x - 1 && coord.x == original_id.x) return vec2(0.0, 0.0);
+    // if (coord.x == pc.gridDim.x - 1 && coord.x == original_id.x) return vec2(0.0, 0.0);
     if (coord.x >= pc.gridDim.x) return vec2(0.0, 0.0); // Point right of right
 
     // If not a ghost cell, sample from buffer
@@ -111,27 +111,27 @@ void main() {
         } else {
             new_vorticity_val = -2.0f * pc.lidVelocity / h_eff;
         }
-    } else if (id.y == 0) { // Bottom Wall
-        if (id.y < pc.gridDim.y - 1) {
-            float psi_north = streamFuncScalars[getIndex(uvec2(id.x, id.y + 1))];
-            new_vorticity_val = -2.0f * psi_north / h_sq;
-        } else {
-            new_vorticity_val = 0.0f;
-        }
-    } else if (id.x == 0) { // Left Wall
-        if (id.x < pc.gridDim.x - 1) {
-            float psi_east = streamFuncScalars[getIndex(uvec2(id.x + 1, id.y))];
-            new_vorticity_val = -2.0f * psi_east / h_sq;
-        } else {
-            new_vorticity_val = 0.0f;
-        }
-    } else if (id.x == pc.gridDim.x - 1) { // Right Wall
-        if (id.x > 0) {
-            float psi_west = streamFuncScalars[getIndex(uvec2(id.x - 1, id.y))];
-            new_vorticity_val = -2.0f * psi_west / h_sq;
-        } else {
-            new_vorticity_val = 0.0f;
-        }
+        // } else if (id.y == 0) { // Bottom Wall
+        //     if (id.y < pc.gridDim.y - 1) {
+        //         float psi_north = streamFuncScalars[getIndex(uvec2(id.x, id.y + 1))];
+        //         new_vorticity_val = -2.0f * psi_north / h_sq;
+        //     } else {
+        //         new_vorticity_val = 0.0f;
+        //     }
+        // } else if (id.x == 0) { // Left Wall
+        //     if (id.x < pc.gridDim.x - 1) {
+        //         float psi_east = streamFuncScalars[getIndex(uvec2(id.x + 1, id.y))];
+        //         new_vorticity_val = -2.0f * psi_east / h_sq;
+        //     } else {
+        //         new_vorticity_val = 0.0f;
+        //     }
+        // } else if (id.x == pc.gridDim.x - 1) { // Right Wall
+        //     if (id.x > 0) {
+        //         float psi_west = streamFuncScalars[getIndex(uvec2(id.x - 1, id.y))];
+        //         new_vorticity_val = -2.0f * psi_west / h_sq;
+        //     } else {
+        //         new_vorticity_val = 0.0f;
+        //     }
     } else {
         // Interior points: Vorticity IS the advected/diffused vorticity (ω*)
         new_vorticity_val = vorticity[current_idx];

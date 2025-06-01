@@ -33,7 +33,7 @@ float samplePsiSafe(uvec2 coord) {
     // If accessing outside, treat as if it's a boundary cell that has psi=0
     if (coord.x >= pc.gridDim.x || coord.x == uvec2(-1).x ||
             coord.y >= pc.gridDim.y || coord.y == uvec2(-1).y) {
-        return 0.0; // Dirichlet boundary psi=0
+        // return 0.0; // Dirichlet boundary psi=0
     }
     return streamFuncScalars[getIndex(coord)];
 }
@@ -50,38 +50,37 @@ void main() {
     float psi_new_val;
 
     // Boundary conditions for stream function (ψ = 0 on all walls for standard lid-driven cavity)
-    if (id.x == 0 || id.x == pc.gridDim.x - 1 || id.y == 0 || id.y == pc.gridDim.y - 1) {
-        psi_new_val = 0.0;
-    } else {
-        // Interior points: SOR iteration for ∇²ψ = -ω
-        float psi_old_center = streamFuncScalars[current_idx]; // ψ_k at (i,j)
+    // if (id.x == 0 || id.x == pc.gridDim.x - 1 || id.y == 0 || id.y == pc.gridDim.y - 1) {
+    //     psi_new_val = 0.0;
+    // } else {
+    // Interior points: SOR iteration for ∇²ψ = -ω
+    float psi_old_center = streamFuncScalars[current_idx]; // ψ_k at (i,j)
 
-        // Neighbors are from ψ_k (Jacobi-like part of SOR) or already updated ψ_k+1 (Gauss-Seidel like part)
-        // For simplicity with parallel SOR / checkerboard, often all neighbors are from previous iteration.
-        // If using a single buffer read/write without checkerboard, some neighbors might be "newer".
-        // Assuming all neighbors from streamFuncScalars (ψ_old for this iteration pass)
-        float psi_xp = streamFuncScalars[getIndex(id + uvec2(1, 0))];
-        float psi_xn = streamFuncScalars[getIndex(id - uvec2(1, 0))];
-        float psi_yp = streamFuncScalars[getIndex(id + uvec2(0, 1))];
-        float psi_yn = streamFuncScalars[getIndex(id - uvec2(0, 1))];
+    // Neighbors are from ψ_k (Jacobi-like part of SOR) or already updated ψ_k+1 (Gauss-Seidel like part)
+    // For simplicity with parallel SOR / checkerboard, often all neighbors are from previous iteration.
+    // If using a single buffer read/write without checkerboard, some neighbors might be "newer".
+    // Assuming all neighbors from streamFuncScalars (ψ_old for this iteration pass)
+    float psi_xp = streamFuncScalars[getIndex(id + uvec2(1, 0))];
+    float psi_xn = streamFuncScalars[getIndex(id - uvec2(1, 0))];
+    float psi_yp = streamFuncScalars[getIndex(id + uvec2(0, 1))];
+    float psi_yn = streamFuncScalars[getIndex(id - uvec2(0, 1))];
 
-        float current_omega = vorticity[current_idx]; // This is ω (the source term for Poisson)
+    float current_omega = vorticity[current_idx]; // This is ω (the source term for Poisson)
 
-        // Standard 5-point stencil for ∇²ψ = -ω leads to:
-        // ψ_GS = 0.25 * ( ψ_xp + ψ_xn + ψ_yp + ψ_yn + h² * ω ) <-- if ∇²ψ = ω
-        // ψ_GS = 0.25 * ( ψ_xp + ψ_xn + ψ_yp + ψ_yn - h² * ω ) <-- if ∇²ψ = -ω (Correct)
-        float term_neighbors_sum = psi_xp + psi_xn + psi_yp + psi_yn;
-        float h_squared = pc.h * pc.h;
+    // Standard 5-point stencil for ∇²ψ = -ω leads to:
+    // ψ_GS = 0.25 * ( ψ_xp + ψ_xn + ψ_yp + ψ_yn + h² * ω ) <-- if ∇²ψ = ω
+    // ψ_GS = 0.25 * ( ψ_xp + ψ_xn + ψ_yp + ψ_yn - h² * ω ) <-- if ∇²ψ = -ω (Correct)
+    float term_neighbors_sum = psi_xp + psi_xn + psi_yp + psi_yn;
+    float h_squared = pc.h * pc.h;
 
-        // Check for h_squared being too small or zero to prevent division by zero if it were in denominator
-        // or massive scaling if too large. pc.h should be > 0.
-        if (h_squared < 1e-12) h_squared = 1e-12; // Safety, though pc.h should be reasonable
+    // Check for h_squared being too small or zero to prevent division by zero if it were in denominator
+    // or massive scaling if too large. pc.h should be > 0.
+    if (h_squared < 1e-12) h_squared = 1e-12; // Safety, though pc.h should be reasonable
 
-        float psi_GS = 0.25 * (term_neighbors_sum - h_squared * current_omega);
+    float psi_GS = 0.25 * (term_neighbors_sum - h_squared * current_omega);
 
-        psi_new_val = (1.0 - pc.omegaSOR) * psi_old_center + pc.omegaSOR * psi_GS;
-    }
+    psi_new_val = (1.0 - pc.omegaSOR) * psi_old_center + pc.omegaSOR * psi_GS;
+    // }
 
     tempScalar[current_idx] = psi_new_val;
 }
-
